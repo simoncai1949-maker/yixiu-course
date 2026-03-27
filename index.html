@@ -745,9 +745,9 @@ function saveWeek(){toast('課表已儲存',true);renderCal();}
 async function clearWeek(){const tid=document.getElementById('sch-t').value,mon=wkMon(document.getElementById('sch-d').value),dates=[0,1,2,3,4,5,6].map(i=>wkDate(mon,i));await Promise.all(S.courses.filter(c=>c.tid===tid&&dates.includes(c.date)).map(c=>fsDel('courses',c.id)));renderSchGrid();}
 async function doAddSingle(){const tid=document.getElementById('sc-t').value,date=document.getElementById('sc-d').value,start=document.getElementById('sc-s').value,end=document.getElementById('sc-e').value,dept=document.getElementById('sc-dept').value.trim(),branch=document.getElementById('sc-branch').value.trim(),grade=document.getElementById('sc-grade').value.trim();if(!tid||!date||!dept||!branch||!grade){toast('請完整填寫');return;}await fsAdd('courses',{tid,date,start,end,dept,branch,grade,fee:0,ds:0,lec:0});['sc-d','sc-dept','sc-branch','sc-grade'].forEach(id=>document.getElementById(id).value='');toast('課程已新增',true);}
 function renderSingleList(){const el=document.getElementById('single-list'),fid=document.getElementById('sc-filter-t').value;let cs=S.courses.filter(c=>!fid||c.tid===fid).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));if(!cs.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>尚無課程</div>';return;}el.innerHTML='<div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap">'
-    +'<button class="btn bg bxs" onclick="bulkSelectAll('course-cb')">全選</button>'
-    +'<button class="btn bg bxs" onclick="bulkSelectNone('course-cb')">取消全選</button>'
-    +'<button class="btn bdel bsm" onclick="bulkDelete('course-cb','courses')">🗑 批量刪除</button>'
+    +'<button class="btn bg bxs" onclick="bulkSelectAll(\'course-cb\')">全選</button>'
+    +'<button class="btn bg bxs" onclick="bulkSelectNone(\'course-cb\')">取消全選</button>'
+    +'<button class="btn bdel bsm" onclick="bulkDelete(\'course-cb\',\'courses\')">🗑 批量刪除</button>'
     +`<span style="font-size:.72rem;color:var(--muted);margin-left:4px">共 ${cs.length} 堂</span>`
     +'</div>'
     +'<table class="tbl"><thead><tr><th style="width:30px"><input type="checkbox" onchange="document.querySelectorAll('.course-cb').forEach(x=>x.checked=this.checked)" style="accent-color:var(--blue)"></th><th>師資</th><th>日期</th><th>時間</th><th>班部</th><th>分校</th><th>年段</th><th style="width:48px"></th></tr></thead><tbody>'
