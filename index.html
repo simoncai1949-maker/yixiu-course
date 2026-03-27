@@ -366,7 +366,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
 
     <div id="pg-teachers" class="pg" style="display:none">
-      <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>師資帳號管理</div><button class="btn bs bsm" onclick="openAddTeacher()">＋ 新增師資</button></div><div class="cb" style="padding:0"><table class="tbl"><thead><tr><th>姓名</th><th>備注</th><th>行事曆權限</th><th style="width:175px"></th></tr></thead><tbody id="t-tbody"></tbody></table></div></div>
+      <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>師資帳號管理</div><button class="btn bs bsm" onclick="openAddTeacher()">＋ 新增師資</button></div><div class="cb" style="padding:0"><table class="tbl"><thead><tr><th>姓名</th><th>備注</th><th>行事曆權限</th><th style="width:220px"></th></tr></thead><tbody id="t-tbody"></tbody></table></div></div>
     </div>
 
     <div id="pg-leave" class="pg" style="display:none">
@@ -440,7 +440,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div class="card">
         <div class="ch">
           <div class="ct"><div class="dot"></div>教師日誌</div>
-          <input type="month" id="jn-filter-month" onchange="renderJournalList()" style="font-size:.77rem;padding:3px 8px;width:auto" />
+          <input type="month" id="jn-filter-month" onchange="renderJournals()" style="font-size:.77rem;padding:3px 8px;width:auto" />
         </div>
         <div class="cb" style="padding:0"><div id="journal-list" style="padding:12px"></div></div>
       </div>
@@ -549,17 +549,38 @@ const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2
 
 async function fsAdd(col, data) {
   setSyncStatus('syncing');
-  const id = data.id || genId();
-  await setDoc(doc(db, col, id), {...data, id});
-  return id;
+  try {
+    const id = data.id || genId();
+    await setDoc(doc(db, col, id), {...data, id});
+    setSyncStatus('ok');
+    return id;
+  } catch(e) {
+    setSyncStatus('err');
+    toast('儲存失敗：'+e.message);
+    throw e;
+  }
 }
 async function fsUpdate(col, id, data) {
   setSyncStatus('syncing');
-  await updateDoc(doc(db, col, id), data);
+  try {
+    await updateDoc(doc(db, col, id), data);
+    setSyncStatus('ok');
+  } catch(e) {
+    setSyncStatus('err');
+    toast('更新失敗：'+e.message);
+    throw e;
+  }
 }
 async function fsDel(col, id) {
   setSyncStatus('syncing');
-  await deleteDoc(doc(db, col, id));
+  try {
+    await deleteDoc(doc(db, col, id));
+    setSyncStatus('ok');
+  } catch(e) {
+    setSyncStatus('err');
+    toast('刪除失敗：'+e.message);
+    throw e;
+  }
 }
 
 function setupListeners() {
@@ -570,19 +591,20 @@ function setupListeners() {
       setSyncStatus('ok');
       refreshPage();
       if(col==='teachers') popLoginSel();
-    }, ()=>setSyncStatus('err'));
+    }, err=>{ console.error(col, err); setSyncStatus('err'); });
     unsubscribers.push(unsub);
   });
 }
 
 function refreshPage() {
+  if(!cur) return; // not logged in
   const active=document.querySelector('.pg[style*="block"]');
   if(!active) return;
   const p=active.id.replace('pg-','');
   if(p==='cal') renderCal();
   else if(p==='mycourses') renderMyCourses();
   else if(p==='newcourse') { renderRecList(); renderSpotList(); }
-  else if(p==='schedule') { renderSingleList(); renderAllCourses(); }
+  else if(p==='schedule') { renderSingleList(); renderAllCourses(); renderSchRecList(); }
   else if(p==='teachers') renderTeachers();
   else if(p==='sub') renderSub();
   else if(p==='review') renderReview();
@@ -698,8 +720,39 @@ function fillSel(){
 // ── TEACHERS ──
 function renderTeachers(){
   const tb=document.getElementById('t-tbody');
-  if(!S.teachers.length){tb.innerHTML='<tr><td colspan="4"><div class="empty"><div class="ei">👤</div>尚無師資</div></td></tr>';return;}
-  tb.innerHTML=S.teachers.map(t=>{const p=t.perm||{type:'all'};const pt={all:'全部',select:'部分師資',self:'僅自己'}[p.type]||'全部';return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span></td><td style="display:flex;gap:4px;padding:7px 10px"><button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="fsDel('teachers','${t.id}')">刪除</button></td></tr>`;}).join('');
+  if(!S.teachers.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">👤</div>尚無師資</div></td></tr>';return;}
+  tb.innerHTML=S.teachers.map(t=>{
+    const p=t.perm||{type:'all'};
+    const pt={all:'全部',select:'部分師資',self:'僅自己'}[p.type]||'全部';
+    return`<tr>
+      <td style="font-weight:500">${t.name}</td>
+      <td style="color:var(--muted)">${t.note||'—'}</td>
+      <td><span class="badge bblue">${pt}</span></td>
+      <td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap">
+        <button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>
+        <button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button>
+        <button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button>
+        <button class="btn bdel bxs" onclick="fsDel('teachers','${t.id}')">刪除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+let editTeacherId=null;
+function openEditTeacher(id){
+  editTeacherId=id;
+  const t=S.teachers.find(x=>x.id===id);if(!t)return;
+  document.getElementById('et-name').value=t.name||'';
+  document.getElementById('et-note').value=t.note||'';
+  openOv('ov-edit-teacher');
+}
+async function saveEditTeacher(){
+  if(!editTeacherId)return;
+  const name=document.getElementById('et-name').value.trim();
+  const note=document.getElementById('et-note').value.trim();
+  if(!name){toast('請填寫姓名');return;}
+  await fsUpdate('teachers',editTeacherId,{name,note});
+  closeOv('ov-edit-teacher');
+  toast('✅ 師資資料已更新',true);
 }
 function openAddTeacher(){document.getElementById('nt-name').value='';document.getElementById('nt-note').value='';openOv('ov-teacher');}
 async function doAddTeacher(){const name=document.getElementById('nt-name').value.trim();if(!name){toast('請填寫姓名');return;}await fsAdd('teachers',{name,pw:'',note:document.getElementById('nt-note').value.trim(),perm:{type:'all',ids:[],showHistory:false}});closeOv('ov-teacher');toast('師資已新增',true);}
@@ -730,7 +783,12 @@ async function savePerm(){
 }
 
 // ── SCHEDULE ──
-const PERIODS=[{l:'08:00',s:'08:00',e:'09:00'},{l:'09:00',s:'09:00',e:'10:00'},{l:'10:00',s:'10:00',e:'11:00'},{l:'11:00',s:'11:00',e:'12:00'},{l:'13:00',s:'13:00',e:'14:00'},{l:'14:00',s:'14:00',e:'15:00'},{l:'15:00',s:'15:00',e:'16:00'},{l:'16:00',s:'16:00',e:'17:00'},{l:'18:00',s:'18:00',e:'19:00'},{l:'19:00',s:'19:00',e:'20:00'},{l:'20:00',s:'20:00',e:'21:00'},{l:'21:00',s:'21:00',e:'22:00'}];
+const PERIODS=[];
+for(let h=8;h<=21;h++){
+  const s=String(h).padStart(2,'0')+':00';
+  const e=String(h+1).padStart(2,'0')+':00';
+  PERIODS.push({l:s,s,e});
+}
 const WDS=['一','二','三','四','五','六','日'];
 const wkMon=ds=>{const d=ds?new Date(ds):new Date(),dy=d.getDay(),df=dy===0?-6:1-dy,m=new Date(d);m.setDate(d.getDate()+df);return m;};
 const wkDate=(mon,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d.toISOString().slice(0,10);};
@@ -1006,7 +1064,8 @@ function renderMyCal(el,tid){
     dates.forEach(ds=>{const evs=getMyCourseEvents(tid,ds);h+=`<td style="vertical-align:top;padding:4px">${evs.map(ev=>`<div class="chip ${ev.src==='rec'?'c-rec':'c-reg'}" style="margin-bottom:3px;white-space:normal;line-height:1.4">${ev.start.slice(0,5)} ${ev.dept}${ev.branch}</div>`).join('')}</td>`;});
     h+='</tr></tbody></table>';el.innerHTML=h;
   }else if(mcCalMode==='month'){
-    const y=now.getFullYear(),m=now.getMonth()+mcCalOffset;
+    const base=new Date(now.getFullYear(), now.getMonth()+mcCalOffset, 1);
+    const y=base.getFullYear(), m=base.getMonth();
     const date=new Date(y,m,1);
     document.getElementById('mc-cal-lbl').textContent=date.getFullYear()+'年'+(date.getMonth()+1)+'月';
     const first=date.getDay(),days=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();
@@ -1046,7 +1105,7 @@ function setupLeave(){
   fillSel();
   if(!isAdm()){ const lvt=document.getElementById('lv-t'); if(lvt) lvt.value=cur.id; }
   if(!document.querySelectorAll('.sessb').length) addSess();
-  setTimeout(populateLeaveRecurring, 80);
+  populateLeaveRecurring();
 }
 function populateLeaveRecurring(){
   const sel=document.getElementById('lv-rec-sel');
@@ -1074,14 +1133,16 @@ function addSess(prefill){
 }
 function addSessFromRec(){
   const sel = document.getElementById('lv-rec-sel');
-  if(!sel){toast('找不到選單元素');return;}
+  if(!sel){ toast('找不到選單'); return; }
+  // If select is empty, try populating it first
+  if(sel.options.length <= 1){ populateLeaveRecurring(); }
   const rid = sel.value;
-  if(!rid){toast('請先從上方選擇一個常態課程');return;}
+  if(!rid){ toast('請先從選單選擇一個常態課程再點加入'); return; }
   const r = S.recurring.find(x => x.id === rid);
-  if(!r){toast('找不到課程資料');return;}
+  if(!r){ toast('找不到課程，請重新整理'); return; }
   addSess({dept:r.dept, branch:r.branch, grade:r.grade, start:r.start, end:r.end});
   sel.value = '';
-  toast('✅ 已帶入課程資料，請填寫停課日期', true);
+  toast('✅ 課程資料已帶入，請補上日期', true);
 }
 let sc=0;
 function clearLeave(){document.getElementById('lv-note').value='';document.getElementById('sess-wrap').innerHTML='';sc=0;addSess();if(!isAdm())document.getElementById('lv-t').value=cur.id;}
@@ -1116,12 +1177,30 @@ async function doTake(){
 function rvTab(el,tab){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.getElementById('rv-pend').style.display=tab==='pend'?'block':'none';document.getElementById('rv-done').style.display=tab==='done'?'block':'none';}
 function renderReview(){
   const tmap={leave:'請假（需代課）',adjust:'課程調動（換時間）',cancel:'停課（取消）'},bmap={pending:'bp',approved:'ba',rejected:'br'},btxt={pending:'待審核',approved:'已核准',rejected:'已退回'};
-  const mk=(list,acts)=>list.length?list.map(r=>{const sl=r.sessions.map((s,i)=>{const tk=r.takers[i];return`・${s.date} ${s.start}–${s.end}　${s.dept} ${s.branch} ${s.grade}${tk?` <span style="color:var(--grn)">✓ ${tn(tk.tid)}</span>`:''}`}).join('<br>');return`<div class="ri"><div class="rmeta"><div class="rwho">${tn(r.tid)}<span class="badge ${bmap[r.status]}">${btxt[r.status]}</span><span style="font-size:.68rem;color:var(--muted)">${tmap[r.type]||r.type}</span></div><div class="rdet" style="margin:3px 0">${sl}</div>${r.note?`<div class="rdet">備注：${r.note}</div>`:''}<div class="rdet" style="margin-top:2px">${new Date(r.at).toLocaleString('zh-TW')}</div></div>${acts?`<div class="racts"><button class="btn bok bsm" onclick="approve('${r.id}')">同意</button><button class="btn bdel bsm" onclick="reject('${r.id}')">退回</button></div>`:''}</div>`;}).join(''):'<div class="empty"><div class="ei">📭</div>無資料</div>';
+  const mk=(list,acts)=>list.length?list.map(r=>{
+    const sl=r.sessions.map((s,i)=>{const tk=r.takers[i];return`・${s.date} ${s.start}–${s.end}　${s.dept} ${s.branch} ${s.grade}${tk?` <span style="color:var(--grn)">✓ ${tn(tk.tid)}</span>`:''}`}).join('<br>');
+    const adminBtns = !acts && isAdm() ? `
+      <div class="racts" style="flex-direction:column;gap:4px">
+        ${r.type==='leave'?r.sessions.map((s,i)=>!r.takers[i]?`<button class="btn bs bxs" onclick="openTake('${r.id}',${i})">指派代課</button>`:`<button class="btn bg bxs" onclick="openEditEvent('take','${r.id}',${i})">✏️ 編輯代課</button>`).join(''):''}
+        <button class="btn bdel bxs" onclick="deleteRequest('${r.id}')">刪除</button>
+      </div>` : '';
+    return`<div class="ri"><div class="rmeta"><div class="rwho">${tn(r.tid)}<span class="badge ${bmap[r.status]}">${btxt[r.status]}</span><span style="font-size:.68rem;color:var(--muted)">${tmap[r.type]||r.type}</span></div><div class="rdet" style="margin:3px 0">${sl}</div>${r.note?`<div class="rdet">備注：${r.note}</div>`:''}<div class="rdet" style="margin-top:2px">${new Date(r.at).toLocaleString('zh-TW')}</div></div>${acts?`<div class="racts"><button class="btn bok bsm" onclick="approve('${r.id}')">同意</button><button class="btn bdel bsm" onclick="reject('${r.id}')">退回</button></div>`:adminBtns}</div>`;
+  }).join(''):'<div class="empty"><div class="ei">📭</div>無資料</div>';
   document.getElementById('rv-pend').innerHTML=mk(S.requests.filter(r=>r.status==='pending'),true);
   document.getElementById('rv-done').innerHTML=mk(S.requests.filter(r=>r.status!=='pending'),false);
 }
+async function deleteRequest(id){
+  if(!confirm('確定要刪除這筆申請紀錄嗎？'))return;
+  await fsDel('requests',id);
+  toast('已刪除',true);
+}
 async function approve(id){await fsUpdate('requests',id,{status:'approved'});const r=S.requests.find(x=>x.id===id);if(r)await logHistory('request',`核准申請：${tn(r.tid)} - ${r.type==='cancel'?'停課':r.type==='leave'?'請假':'調動'}`,ADMIN_ID);toast('✅ 已核准',true);}
-async function reject(id){await fsUpdate('requests',id,{status:'rejected'});toast('已退回');}
+async function reject(id){
+  await fsUpdate('requests',id,{status:'rejected'});
+  const r=S.requests.find(x=>x.id===id);
+  if(r) await logHistory('request','退回申請：'+tn(r.tid),ADMIN_ID);
+  toast('已退回');
+}
 
 // ── CALENDAR ──
 const MZ=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -1130,7 +1209,19 @@ const SLOTS=[];for(let h=8;h<=22;h++)SLOTS.push(String(h).padStart(2,'0')+':00')
 const SECTIONS=[{label:'上午',from:'08:00',to:'12:59'},{label:'中午',from:'13:00',to:'13:59'},{label:'下午',from:'14:00',to:'22:00'}];
 let calY,calM,calView='month',calWOff=0,calDay=null;
 function initCal(){const n=new Date();calY=n.getFullYear();calM=n.getMonth();}
-function calStep(d){if(calView==='month'){calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}}else calWOff+=d;renderCal();}
+function calStep(d){
+  if(calView==='month'){
+    calM+=d;
+    if(calM<0){calM=11;calY--;}
+    if(calM>11){calM=0;calY++;}
+  } else if(calView==='day') {
+    calDayNav(d);
+    return;
+  } else {
+    calWOff+=d;
+  }
+  renderCal();
+}
 function calToday(){initCal();calWOff=0;calDay=null;renderCal();}
 function setView(v){calView=v;document.getElementById('vb-m').classList.toggle('on',v==='month');document.getElementById('vb-w').classList.toggle('on',v==='week');document.getElementById('vb-d')?.classList.toggle('on',v==='day');renderCal();}
 
@@ -1592,6 +1683,9 @@ window.populateSpotFromRec = populateSpotFromRec;
 window.spFromRecChange = spFromRecChange;
 window.openMyCourseEdit = openMyCourseEdit;
 window.openEditRecModal = openEditRecModal;
+window.openEditTeacher = openEditTeacher;
+window.saveEditTeacher = saveEditTeacher;
+window.deleteRequest = deleteRequest;
 window.saveEditRec = saveEditRec;
 window.renderSchRecList = renderSchRecList;
 window.confirmDelRec = confirmDelRec;
@@ -1765,6 +1859,19 @@ window.adminEditRec = adminEditRec;
       <div class="priv-notice">🔒 費用欄位僅本人及管理員可見。</div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-rec')">取消</button><button class="btn bn" onclick="saveEditRec()">儲存</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-edit-teacher">
+  <div class="modal" style="max-width:380px">
+    <div class="mh"><div class="mht">✏️ 編輯師資資料</div><button class="mcls" onclick="closeOv('ov-edit-teacher')">✕</button></div>
+    <div class="mb">
+      <div class="gr" style="margin-bottom:0">
+        <div class="fg"><label>姓名</label><input type="text" id="et-name" placeholder="請輸入姓名" /></div>
+        <div class="fg"><label>備注</label><input type="text" id="et-note" placeholder="選填" /></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-teacher')">取消</button><button class="btn bn" onclick="saveEditTeacher()">儲存</button></div>
   </div>
 </div>
 </body>
