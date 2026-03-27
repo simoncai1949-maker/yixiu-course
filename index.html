@@ -143,7 +143,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <input type="checkbox" id="remember-me" style="width:14px;height:14px;accent-color:var(--blue)">
       <label for="remember-me" style="font-size:.76rem;color:var(--muted);cursor:pointer;margin:0">記住我（30天不用重新登入）</label>
     </div>
-    <button class="btn bn" style="width:100%;padding:9px" onclick="doLogin()">登入</button>
+    <button class="btn bn" style="width:100%;padding:9px;justify-content:center" onclick="doLogin()">登入</button>
     <div style="margin-top:10px;font-size:.67rem;color:var(--muted);text-align:center">首次登入請選姓名，不用輸入密碼，系統會請你設定</div>
   </div>
 </div>
@@ -372,7 +372,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div id="pg-leave" class="pg" style="display:none">
       <div class="notice">填寫請假／停課／調動申請，送出後由易修審核。</div>
       <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>申請單</div></div><div class="cb">
-        <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t"></select></div><div class="fg"><label>申請類型</label><select id="lv-type">
+        <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t" onchange="populateLeaveRecurring()"></select></div><div class="fg"><label>申請類型</label><select id="lv-type">
   <option value="cancel">停課（此堂課取消，不需代課）</option>
   <option value="leave">請假（需要安排代課）</option>
   <option value="adjust">課程調動（同一老師換時間）</option>
@@ -885,22 +885,27 @@ function renderRecList(){
 }
 let editRecId=null;
 function openEditRecModal(id){
-  editRecId=id;
-  const r=S.recurring.find(x=>x.id===id);if(!r)return;
-  const wl=['日','一','二','三','四','五','六'],freqL={weekly:'每週',biweekly:'隔週',monthly:'每月'};
-  document.getElementById('er-info').textContent=freqL[r.freq||'weekly']+wl[r.wd]+' '+r.start+'–'+r.end+' '+r.dept+r.branch+r.grade;
-  document.getElementById('er-dept').value=r.dept;
-  document.getElementById('er-branch').value=r.branch;
-  document.getElementById('er-grade').value=r.grade;
-  document.getElementById('er-start').value=r.start;
-  document.getElementById('er-end').value=r.end;
-  document.getElementById('er-wd').value=r.wd;
-  document.getElementById('er-freq').value=r.freq||'weekly';
-  document.getElementById('er-from').value=r.from||'';
-  document.getElementById('er-to').value=r.to||'';
-  document.getElementById('er-fee').value=r.fee||0;
-  document.getElementById('er-ds').value=r.ds||0;
-  document.getElementById('er-lec').value=r.lec||0;
+  editRecId = id;
+  const r = S.recurring.find(x => x.id === id);
+  if(!r){ toast('找不到課程，請重新整理頁面'); return; }
+  const modal = document.getElementById('ov-edit-rec');
+  if(!modal){ toast('找不到編輯視窗'); return; }
+  const wl=['日','一','二','三','四','五','六'];
+  const freqL={weekly:'每週',biweekly:'隔週',monthly:'每月'};
+  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value = val; };
+  setVal('er-info-text', freqL[r.freq||'weekly']+wl[r.wd]+' '+r.start+'–'+r.end+' '+r.dept+r.branch+r.grade);
+  setVal('er-dept', r.dept);
+  setVal('er-branch', r.branch);
+  setVal('er-grade', r.grade);
+  setVal('er-start', r.start);
+  setVal('er-end', r.end);
+  setVal('er-wd', r.wd);
+  setVal('er-freq', r.freq||'weekly');
+  setVal('er-from', r.from||'');
+  setVal('er-to', r.to||'');
+  setVal('er-fee', r.fee||0);
+  setVal('er-ds', r.ds||0);
+  setVal('er-lec', r.lec||0);
   openOv('ov-edit-rec');
 }
 async function saveEditRec(){
@@ -1037,15 +1042,29 @@ function renderMyCal(el,tid){
 }
 
 // ── LEAVE ──
-function setupLeave(){fillSel();if(!isAdm())document.getElementById('lv-t').value=cur.id;if(!document.querySelectorAll('.sessb').length)addSess();populateLeaveRecurring();}
+function setupLeave(){
+  fillSel();
+  if(!isAdm()){ const lvt=document.getElementById('lv-t'); if(lvt) lvt.value=cur.id; }
+  if(!document.querySelectorAll('.sessb').length) addSess();
+  setTimeout(populateLeaveRecurring, 80);
+}
 function populateLeaveRecurring(){
-  const sel=document.getElementById('lv-rec-sel');if(!sel)return;
-  const tid=isAdm()?document.getElementById('lv-t').value:cur.id;
-  if(!tid){sel.innerHTML='<option value="">— 先選師資 —</option>';return;}
-  const wl=['日','一','二','三','四','五','六'],freqL={weekly:'每週',biweekly:'隔週',monthly:'每月'};
-  const recs=S.recurring.filter(r=>r.tid===tid);
-  sel.innerHTML='<option value="">— 選常態課程快速填入（選後點加入）—</option>'+
-    recs.map(r=>`<option value="${r.id}">${freqL[r.freq||'weekly']}${wl[r.wd]} ${r.start}–${r.end} ${r.dept}${r.branch}${r.grade}</option>`).join('');
+  const sel=document.getElementById('lv-rec-sel');
+  if(!sel) return;
+  const tid = isAdm() ? (document.getElementById('lv-t')?.value||'') : cur.id;
+  if(!tid){
+    sel.innerHTML='<option value="">— 先選師資 —</option>';
+    return;
+  }
+  const wl=['日','一','二','三','四','五','六'];
+  const freqL={weekly:'每週',biweekly:'隔週',monthly:'每月'};
+  const recs = S.recurring.filter(r => r.tid === tid);
+  if(!recs.length){
+    sel.innerHTML='<option value="">— 此師資尚無常態課程 —</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">— 選常態課程，點「加入」帶入 —</option>' +
+    recs.map(r => `<option value="${r.id}">${freqL[r.freq||'weekly']}${wl[r.wd]} ${r.start}–${r.end} ${r.dept}${r.branch}${r.grade}</option>`).join('');
 }
 function addSess(prefill){
   sc++;const n=sc,div=document.createElement('div');div.className='sessb';div.id='s'+n;
@@ -1054,13 +1073,15 @@ function addSess(prefill){
   document.getElementById('sess-wrap').appendChild(div);
 }
 function addSessFromRec(){
-  const sel=document.getElementById('lv-rec-sel');
-  if(!sel||!sel.value){toast('請先從上方選擇常態課程');return;}
-  const r=S.recurring.find(x=>x.id===sel.value);
-  if(!r){toast('找不到課程');return;}
-  addSess({dept:r.dept,branch:r.branch,grade:r.grade,start:r.start,end:r.end});
-  sel.value='';
-  toast('已加入堂次，請填寫日期',true);
+  const sel = document.getElementById('lv-rec-sel');
+  if(!sel){toast('找不到選單元素');return;}
+  const rid = sel.value;
+  if(!rid){toast('請先從上方選擇一個常態課程');return;}
+  const r = S.recurring.find(x => x.id === rid);
+  if(!r){toast('找不到課程資料');return;}
+  addSess({dept:r.dept, branch:r.branch, grade:r.grade, start:r.start, end:r.end});
+  sel.value = '';
+  toast('✅ 已帶入課程資料，請填寫停課日期', true);
 }
 let sc=0;
 function clearLeave(){document.getElementById('lv-note').value='';document.getElementById('sess-wrap').innerHTML='';sc=0;addSess();if(!isAdm())document.getElementById('lv-t').value=cur.id;}
@@ -1714,7 +1735,7 @@ window.adminEditRec = adminEditRec;
   <div class="modal">
     <div class="mh"><div class="mht">✏️ 編輯常態課程</div><button class="mcls" onclick="closeOv('ov-edit-rec')">✕</button></div>
     <div class="mb">
-      <div id="er-info" style="font-size:.75rem;color:var(--muted);margin-bottom:12px;padding:7px 10px;background:var(--bg2);border-radius:var(--r)"></div>
+      <div id="er-info-text" style="font-size:.75rem;color:var(--muted);margin-bottom:12px;padding:7px 10px;background:var(--bg2);border-radius:var(--r)"></div>
       <div class="gr g3">
         <div class="fg"><label>班部</label><input type="text" id="er-dept" /></div>
         <div class="fg"><label>分校</label><input type="text" id="er-branch" /></div>
