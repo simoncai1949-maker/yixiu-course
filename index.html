@@ -361,14 +361,12 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 
 <div id="toast"></div>
 
-<script>
+<script type="module">
 // ══════════════════════════════════════════════════
 // FIREBASE CONFIG
 // ══════════════════════════════════════════════════
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-</script>
-<script type="module">
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 const firebaseConfig = {
   apiKey: "AIzaSyCiBE3_ZFOOdrAlnG7_KBcTC5km1BB5MfU",
   authDomain: "yixiuchinese.firebaseapp.com",
