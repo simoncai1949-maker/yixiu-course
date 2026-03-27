@@ -744,15 +744,49 @@ async function cellCh(inp){const{dataset:{tid,date,s,e}}=inp;const ex=S.courses.
 function saveWeek(){toast('課表已儲存',true);renderCal();}
 async function clearWeek(){const tid=document.getElementById('sch-t').value,mon=wkMon(document.getElementById('sch-d').value),dates=[0,1,2,3,4,5,6].map(i=>wkDate(mon,i));await Promise.all(S.courses.filter(c=>c.tid===tid&&dates.includes(c.date)).map(c=>fsDel('courses',c.id)));renderSchGrid();}
 async function doAddSingle(){const tid=document.getElementById('sc-t').value,date=document.getElementById('sc-d').value,start=document.getElementById('sc-s').value,end=document.getElementById('sc-e').value,dept=document.getElementById('sc-dept').value.trim(),branch=document.getElementById('sc-branch').value.trim(),grade=document.getElementById('sc-grade').value.trim();if(!tid||!date||!dept||!branch||!grade){toast('請完整填寫');return;}await fsAdd('courses',{tid,date,start,end,dept,branch,grade,fee:0,ds:0,lec:0});['sc-d','sc-dept','sc-branch','sc-grade'].forEach(id=>document.getElementById(id).value='');toast('課程已新增',true);}
-function renderSingleList(){const el=document.getElementById('single-list'),fid=document.getElementById('sc-filter-t').value;let cs=S.courses.filter(c=>!fid||c.tid===fid).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));if(!cs.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>尚無課程</div>';return;}el.innerHTML='<div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap">'
-    +'<button class="btn bg bxs" onclick="bulkSelectAll(\'course-cb\')">全選</button>'
-    +'<button class="btn bg bxs" onclick="bulkSelectNone(\'course-cb\')">取消全選</button>'
-    +'<button class="btn bdel bsm" onclick="bulkDelete(\'course-cb\',\'courses\')">🗑 批量刪除</button>'
-    +`<span style="font-size:.72rem;color:var(--muted);margin-left:4px">共 ${cs.length} 堂</span>`
-    +'</div>'
-    +'<table class="tbl"><thead><tr><th style="width:30px"><input type="checkbox" onchange="document.querySelectorAll('.course-cb').forEach(x=>x.checked=this.checked)" style="accent-color:var(--blue)"></th><th>師資</th><th>日期</th><th>時間</th><th>班部</th><th>分校</th><th>年段</th><th style="width:48px"></th></tr></thead><tbody>'
-    +cs.map(c=>`<tr><td><input type="checkbox" class="course-cb" value="${c.id}" style="accent-color:var(--blue)"></td><td style="font-weight:500">${tn(c.tid)}</td><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept}</td><td>${c.branch}</td><td>${c.grade}</td><td><button class="btn bdel bxs" onclick="fsDel('courses','${c.id}')">刪</button></td></tr>`).join('')
-    +'</tbody></table>';}
+function renderSingleList(){
+  const el=document.getElementById('single-list');
+  const fid=document.getElementById('sc-filter-t').value;
+  let cs=S.courses.filter(c=>!fid||c.tid===fid).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+  if(!cs.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>尚無課程</div>';return;}
+  let rows='';
+  cs.forEach(c=>{
+    rows+=`<tr>
+      <td><input type="checkbox" class="course-cb" data-id="${c.id}" style="accent-color:var(--blue)"></td>
+      <td style="font-weight:500">${tn(c.tid)}</td>
+      <td>${c.date}</td>
+      <td>${c.start}–${c.end}</td>
+      <td>${c.dept}</td>
+      <td>${c.branch}</td>
+      <td>${c.grade}</td>
+      <td><button class="btn bdel bxs" onclick="fsDel('courses','${c.id}')">刪</button></td>
+    </tr>`;
+  });
+  el.innerHTML=`
+    <div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap">
+      <button class="btn bg bxs" onclick="bulkSelectAll()">全選</button>
+      <button class="btn bg bxs" onclick="bulkSelectNone()">取消全選</button>
+      <button class="btn bdel bsm" onclick="bulkDelete()">🗑 批量刪除</button>
+      <span style="font-size:.72rem;color:var(--muted);margin-left:4px">共 ${cs.length} 堂</span>
+    </div>
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:30px"><input type="checkbox" id="select-all-cb" onchange="toggleAllCb(this)" style="accent-color:var(--blue)"></th>
+        <th>師資</th><th>日期</th><th>時間</th><th>班部</th><th>分校</th><th>年段</th><th style="width:48px"></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+function toggleAllCb(master){document.querySelectorAll('.course-cb').forEach(x=>x.checked=master.checked);}
+function bulkSelectAll(){document.querySelectorAll('.course-cb').forEach(x=>x.checked=true);const m=document.getElementById('select-all-cb');if(m)m.checked=true;}
+function bulkSelectNone(){document.querySelectorAll('.course-cb').forEach(x=>x.checked=false);const m=document.getElementById('select-all-cb');if(m)m.checked=false;}
+async function bulkDelete(){
+  const ids=Array.from(document.querySelectorAll('.course-cb:checked')).map(x=>x.dataset.id);
+  if(!ids.length){toast('請先勾選要刪除的課程');return;}
+  if(!confirm('確定要刪除選取的 '+ids.length+' 堂課程嗎？'))return;
+  await Promise.all(ids.map(id=>fsDel('courses',id)));
+  toast('已刪除 '+ids.length+' 堂課程',true);
+}
 function renderAllCourses(){const el=document.getElementById('all-courses-list'),fid=document.getElementById('all-filter-t').value,fm=document.getElementById('all-filter-m').value;let all=[];S.courses.filter(c=>(!fid||c.tid===fid)&&(!fm||c.date.startsWith(fm))).forEach(c=>all.push({...c,src:'admin'}));S.spots.filter(c=>(!fid||c.tid===fid)&&(!fm||c.date.startsWith(fm))).forEach(c=>all.push({...c,src:'spot'}));S.recurring.filter(r=>!fid||r.tid===fid).forEach(r=>all.push({...r,date:'每週'+['日','一','二','三','四','五','六'][r.wd],src:'rec'}));all.sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.start||'').localeCompare(b.start||''));if(!all.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>尚無課程</div>';return;}const srcL={admin:'管理輸入',spot:'點狀',rec:'常態'};el.innerHTML='<table class="tbl"><thead><tr><th>師資</th><th>日期</th><th>時間</th><th>班部</th><th>分校</th><th>年段</th><th>類型</th></tr></thead><tbody>'+all.map(c=>`<tr><td style="font-weight:500">${tn(c.tid)}</td><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept}</td><td>${c.branch}</td><td>${c.grade}</td><td><span class="badge ${c.src==='rec'?'brec':c.src==='spot'?'bblue':'bnv'}">${srcL[c.src]}</span></td></tr>`).join('')+'</tbody></table>';}
 
 // ── RECURRING ──
@@ -1272,16 +1306,8 @@ function spFromRecChange(sel){
   document.getElementById('sp-lec').value=r.lec||0;
   sel.value='';
 }
-function bulkSelectAll(cls){document.querySelectorAll('.'+cls).forEach(x=>x.checked=true);}
-function bulkSelectNone(cls){document.querySelectorAll('.'+cls).forEach(x=>x.checked=false);}
-async function bulkDelete(cls,col){
-  const ids=Array.from(document.querySelectorAll('.'+cls+':checked')).map(x=>x.value);
-  if(!ids.length){toast('請先勾選要刪除的課程');return;}
-  if(!confirm(`確定要刪除選取的 ${ids.length} 堂課程嗎？`))return;
-  await Promise.all(ids.map(id=>fsDel(col,id)));
-  toast('✅ 已刪除 '+ids.length+' 堂課程',true);
-}
-const _g={switchRole,doLogin,doLogout,doFirstPw,doChangePw,goPage,fillSel,renderTeachers,openAddTeacher,doAddTeacher,openRp,doResetPw,openPerm,savePerm,fsDel,schTab,renderSchGrid,cellCh,saveWeek,clearWeek,doAddSingle,renderSingleList,renderAllCourses,saveRecurring,renderRecList,delRecurring,saveSpot,renderSpotList,ncTab,populateCopyFrom,renderMyCourses,setMcView,setMcCalView,mcCalStep,setupLeave,addSess,addSessFromRec,clearLeave,submitLeave,populateLeaveRecurring,renderSub,openTake,doTake,rvTab,renderReview,approve,reject,calStep,calToday,setView,calDayNav,showDay,openExportModal,doExport,renderHistory,openCancelRec,submitCancelRec,openEditEvent,saveEditEvent,removeEventTaker,adminOpenEdit,saveAdminEdit,adminConfirmDelete,deleteAdminEdit,quickAddCourse,saveQuickAdd,openJournal,saveJournal,renderJournals,openOv,closeOv,bulkSelectAll,bulkSelectNone,bulkDelete,populateSpotFromRec,spFromRecChange};
+
+const _g={switchRole,doLogin,doLogout,doFirstPw,doChangePw,goPage,fillSel,renderTeachers,openAddTeacher,doAddTeacher,openRp,doResetPw,openPerm,savePerm,fsDel,schTab,renderSchGrid,cellCh,saveWeek,clearWeek,doAddSingle,renderSingleList,renderAllCourses,saveRecurring,renderRecList,delRecurring,saveSpot,renderSpotList,ncTab,populateCopyFrom,renderMyCourses,setMcView,setMcCalView,mcCalStep,setupLeave,addSess,addSessFromRec,clearLeave,submitLeave,populateLeaveRecurring,renderSub,openTake,doTake,rvTab,renderReview,approve,reject,calStep,calToday,setView,calDayNav,showDay,openExportModal,doExport,renderHistory,openCancelRec,submitCancelRec,openEditEvent,saveEditEvent,removeEventTaker,adminOpenEdit,saveAdminEdit,adminConfirmDelete,deleteAdminEdit,quickAddCourse,saveQuickAdd,openJournal,saveJournal,renderJournals,openOv,closeOv,bulkSelectAll,bulkSelectNone,bulkDelete,toggleAllCb,populateSpotFromRec,spFromRecChange};
 Object.keys(_g).forEach(k=>window[k]=_g[k]);
 </script>
 
