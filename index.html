@@ -1048,7 +1048,11 @@ function getMyCourseEvents(tid,ds){
     const freq=r.freq||'weekly';
     if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/(86400000));if(Math.floor(diff/7)%2!==0)return false;}
     if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;
-    const cancelled=S.requests.some(req=>req.status==='approved'&&req.tid===tid&&req.type==='cancel'&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
+    const cancelled=S.requests.some(req=>
+      req.status==='approved' && req.type==='cancel' &&
+      req.tid===tid &&
+      req.sessions.some(s=>s.date===ds && s.start===r.start)
+    );
     return !cancelled;
   }).forEach(r=>evs.push({...r,src:'rec'}));
   return evs.sort((a,b)=>(a.start||'').localeCompare(b.start||''));
@@ -1205,16 +1209,38 @@ let tId=null,tSi=null;
 function openTake(rid,si){
   const r=S.requests.find(x=>x.id===rid),s=r.sessions[si];tId=rid;tSi=si;
   document.getElementById('take-chk').checked=false;
-  document.getElementById('take-info').innerHTML=`<div class="ir"><span class="il">班級</span><span class="iv"><strong>${s.dept} ${s.branch} ${s.grade}</strong></span></div><div class="ir"><span class="il">時間</span><span class="iv">${s.date} ${s.start}–${s.end}</span></div><div class="ir"><span class="il">原師資</span><span class="iv" style="color:var(--blue)">${tn(r.tid)}</span></div><div class="notice" style="margin-top:8px;background:var(--gbg);border-left-color:var(--grn);color:var(--grn)">您將以「<strong>${cur.name}</strong>」的身份接課</div>`;
+  // Show teacher selector for admin; show self-info for teachers
+  const selRow = document.getElementById('take-sel-row');
+  if(selRow){
+    if(isAdm()){
+      selRow.style.display='flex';
+      fillSel();
+      document.getElementById('take-sel').value='';
+    } else {
+      selRow.style.display='none';
+    }
+  }
+  document.getElementById('take-info').innerHTML=`
+    <div class="ir"><span class="il">班級</span><span class="iv"><strong>${s.dept} ${s.branch} ${s.grade}</strong></span></div>
+    <div class="ir"><span class="il">時間</span><span class="iv">${s.date} ${s.start}–${s.end}</span></div>
+    <div class="ir"><span class="il">原師資</span><span class="iv" style="color:var(--blue)">${tn(r.tid)}</span></div>
+    ${!isAdm()?`<div class="notice" style="margin-top:8px;background:var(--gbg);border-left-color:var(--grn);color:var(--grn)">您將以「<strong>${cur.name}</strong>」的身份接課</div>`:''}`;
   openOv('ov-take');
 }
 async function doTake(){
-  const tid=cur.id;
+  // Admin can select any teacher; regular teacher is locked to self
+  let tid;
+  if(isAdm()){
+    tid = document.getElementById('take-sel').value;
+    if(!tid){ toast('請選擇代課師資'); return; }
+  } else {
+    tid = cur.id;
+  }
   if(!document.getElementById('take-chk').checked){toast('請勾選已閱畢代課注意事項');return;}
   const r=S.requests.find(x=>x.id===tId);if(!r)return;
   await fsUpdate('requests',tId,{takers:{...r.takers,[tSi]:{tid}}});
-  await logHistory('request',`${tn(tid)} 接受代課：${r.sessions[tSi].dept}${r.sessions[tSi].branch}`,tid);
-  closeOv('ov-take');toast('✅ 已接課！',true);
+  await logHistory('request',tn(tid)+' 接受代課：'+r.sessions[tSi].dept+r.sessions[tSi].branch,tid);
+  closeOv('ov-take');toast('✅ '+tn(tid)+' 已接課！',true);
 }
 
 // ── REVIEW ──
@@ -1274,8 +1300,26 @@ function getEventsForDate(ds){
   S.courses.forEach(c=>{if(c.date!==ds||!canSee(viewer,c.tid))return;const ov=S.requests.some(r=>r.status==='approved'&&r.tid===c.tid&&r.sessions.some(s=>s.date===ds&&s.start===c.start));if(!ov)events.push({type:'reg',label:`${c.dept} ${c.branch} ${c.grade}`,tid:c.tid,start:c.start,end:c.end,srcId:c.id,srcCol:'courses',c});});
   S.recurring.forEach(r=>{
     if(r.wd!==wd||(r.from&&ds<r.from)||(r.to&&ds>r.to)||!canSee(viewer,r.tid))return;
-    const req=S.requests.find(req=>req.status==='approved'&&req.tid===r.tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
-    if(req){const si=req.sessions.findIndex(s=>s.date===ds&&s.start===r.start);const tk=req.takers[si];if(req.type==='cancel')return;if(tk)events.push({type:'take',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,req,si,s:req.sessions[si],tk});else events.push({type:'ok',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,req,si,s:req.sessions[si]});}
+    // First: check if this occurrence is cancelled (stop showing it)
+    const isCancelled = S.requests.some(req=>
+      req.status==='approved' && req.type==='cancel' &&
+      req.tid===r.tid &&
+      req.sessions.some(s=>s.date===ds && s.start===r.start)
+    );
+    if(isCancelled) return; // skip this occurrence entirely
+
+    // Then: check for leave/sub requests
+    const req=S.requests.find(req=>
+      req.status==='approved' && req.type!=='cancel' &&
+      req.tid===r.tid &&
+      req.sessions.some(s=>s.date===ds && s.start===r.start)
+    );
+    if(req){
+      const si=req.sessions.findIndex(s=>s.date===ds&&s.start===r.start);
+      const tk=req.takers[si];
+      if(tk) events.push({type:'take',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,req,si,s:req.sessions[si],tk});
+      else events.push({type:'ok',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,req,si,s:req.sessions[si]});
+    }
     else{
       const freq=r.freq||'weekly';
       if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return;}
@@ -1452,23 +1496,34 @@ function adminConfirmDelete(type,id){
   }
 }
 async function delRecSingle(){
-  // Delete only this occurrence: create a cancel request for this date
   const id = window._delRecId;
-  const date = window._delRecDs;
+  const date = window._delRecDs || window._cds || '';
   const r = S.recurring.find(x=>x.id===id);
-  if(!r||!date){ toast('找不到課程或日期'); return; }
-  // Add an approved cancel request so this date is hidden from calendar
+  if(!r){ toast('找不到課程資料'); return; }
+  if(!date){ toast('找不到日期，請從行事曆點入後再刪除'); return; }
+  // Verify this date matches the recurring weekday
+  const wd = new Date(date).getDay();
+  if(wd !== r.wd){
+    toast('日期與課程星期不符，請重新操作');
+    return;
+  }
   await fsAdd('requests',{
-    tid:r.tid, type:'cancel', note:'管理員刪除單堂',
+    tid: r.tid,
+    type: 'cancel',
+    note: '管理員刪除單堂',
     sessions:[{date, start:r.start, end:r.end, dept:r.dept, branch:r.branch, grade:r.grade}],
-    status:'approved', takers:{}, at:new Date().toISOString(), recId:id
+    status: 'approved',
+    takers: {},
+    at: new Date().toISOString(),
+    recId: id
   });
   await logHistory('course','管理員刪除單堂：'+r.dept+r.branch+r.grade+' '+date, ADMIN_ID);
   closeOv('ov-del-rec-choice');
   closeOv('ov-admin-edit');
   closeOv('ov-day');
-  toast('已刪除單堂（'+date+'）',true);
+  toast('✅ 已刪除 '+date+' 這一堂', true);
 }
+
 async function delRecAll(){
   const id = window._delRecId;
   const r = S.recurring.find(x=>x.id===id);
