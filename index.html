@@ -187,6 +187,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   <div class="sb-foot">
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.18);text-align:center;padding:4px 0 6px;letter-spacing:.5px">最後維護：2026/03/30</div>
   </div>
 </nav>
 <div class="main">
@@ -263,6 +264,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div class="tabs">
         <button class="tab on" onclick="ncTab(this,'rec')">常態課程（每週）</button>
         <button class="tab" onclick="ncTab(this,'spot')">點狀課程（單次）</button>
+        <button class="tab" onclick="ncTab(this,'calcal')">📅 行事曆新增</button>
       </div>
       <div id="nc-rec">
         <div class="card">
@@ -335,6 +337,22 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
           <div class="ch"><div class="ct"><div class="dot"></div>已設定的點狀課程</div>
             <input type="month" id="sp-filter-month" onchange="renderSpotList()" style="font-size:.77rem;padding:4px 8px;width:auto"></div>
           <div class="cb" style="padding:0"><div id="spot-list" style="padding:12px"></div></div>
+        </div>
+      </div>
+      <div id="nc-calcal" style="display:none">
+        <div class="card">
+          <div class="ch">
+            <div class="ct"><div class="dot"></div>行事曆新增</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn bg bsm" onclick="ncCalStep(-1)">‹</button>
+              <span id="nc-cal-lbl" style="font-size:.82rem;font-weight:600;color:var(--navy);min-width:80px;text-align:center"></span>
+              <button class="btn bg bsm" onclick="ncCalStep(1)">›</button>
+            </div>
+          </div>
+          <div class="cb" style="padding:12px">
+            <div class="notice" style="margin-bottom:10px">點選任一天直接新增課程，可選點狀或常態。</div>
+            <div id="nc-cal-body"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1142,7 +1160,13 @@ function getEventsForDate(ds){
   });
   S.spots.forEach(s=>{if(s.date!==ds||!canSee(viewer,s.tid))return;events.push({type:'spot',label:`${s.dept} ${s.branch} ${s.grade}`,tid:s.tid,start:s.start,end:s.end,srcId:s.id,srcCol:'spots',s});});
   S.requests.forEach(req=>{if(req.status==='rejected')return;req.sessions.forEach((s,si)=>{if(s.date!==ds||!canSee(viewer,req.tid))return;const tk=req.takers[si];if(tk)events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});else if(req.status==='approved')events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});});});
-  return events.sort((a,b)=>a.start.localeCompare(b.start));
+  // Sort: current user's events first, then by start time
+  return events.sort((a,b)=>{
+    const aOwn = cur && a.tid===cur.id ? 0 : 1;
+    const bOwn = cur && b.tid===cur.id ? 0 : 1;
+    if(aOwn!==bOwn) return aOwn-bOwn;
+    return a.start.localeCompare(b.start);
+  });
 }
 function renderCal(){if(calView==='month')renderMonth();else if(calView==='week')renderWeek();else renderDay();}
 function renderMonth(){
@@ -1150,7 +1174,7 @@ function renderMonth(){
   const first=new Date(calY,calM,1).getDay(),days=new Date(calY,calM+1,0).getDate();
   let h='<div class="mgrid">';DZ.forEach(d=>h+=`<div class="mdn">${d}</div>`);
   for(let i=0;i<first;i++)h+='<div class="mc emp"></div>';
-  for(let d=1;d<=days;d++){const ds=calY+'-'+String(calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),isT=now.getFullYear()===calY&&now.getMonth()===calM&&now.getDate()===d,evs=getEventsForDate(ds),hasEv=evs.length>0;let chips=evs.slice(0,4).map(ev=>{const cl={reg:'c-reg',rec:'c-rec',spot:'c-reg',pend:'c-pend',ok:'c-ok',take:'c-take'}[ev.type]||'c-reg';return`<div class="chip ${cl}">${tn(ev.tid)}：${ev.label}</div>`;}).join('');if(evs.length>4)chips+=`<div class="chip c-pend">+${evs.length-4}</div>`;h+=`<div class="mc ${isT?'tod':''} ${hasEv?'hev':''}" ${hasEv?`onclick="showDay('${ds}')"`:''}><div class="mdt">${d}</div>${chips}</div>`;}
+  for(let d=1;d<=days;d++){const ds=calY+'-'+String(calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),isT=now.getFullYear()===calY&&now.getMonth()===calM&&now.getDate()===d,evs=getEventsForDate(ds),hasEv=evs.length>0;let chips=evs.slice(0,4).map(ev=>{const cl={reg:'c-reg',rec:'c-rec',spot:'c-reg',pend:'c-pend',ok:'c-ok',take:'c-take'}[ev.type]||'c-reg';const own=cur&&ev.tid===cur.id;return`<div class="chip ${cl}" style="${own?'font-weight:700;border-left:2px solid var(--blue);padding-left:3px':'opacity:.75'}">${own?'':'<span style="font-size:.6em;opacity:.6">'+tn(ev.tid)+'：</span>'}${own?ev.label:ev.label}</div>`;}).join('');if(evs.length>4)chips+=`<div class="chip c-pend">+${evs.length-4}</div>`;h+=`<div class="mc ${isT?'tod':''} ${hasEv?'hev':''}" ${hasEv?`onclick="showDay('${ds}')"`:''}><div class="mdt">${d}</div>${chips}</div>`;}
   h+='</div>';document.getElementById('cal-body').innerHTML=h;
 }
 function renderWeek(){
@@ -1171,7 +1195,7 @@ function renderWeek(){
       const ds=wd.toISOString().slice(0,10),evs=getEventsForDate(ds).filter(ev=>ev.start.startsWith(slot.slice(0,2)));
       const isEmpty=evs.length===0;
       h+=`<div class="wc" onclick="${isEmpty&&!isAdm()?`quickAddCourse('${ds}','${slot}');`:``}showDay('${ds}')">`;
-      h+=evs.map(ev=>`<div class="wev ${{reg:'ev-reg',rec:'ev-rec',spot:'ev-reg',pend:'ev-pend',ok:'ev-ok',take:'ev-take'}[ev.type]||'ev-reg'}">${tn(ev.tid)}：${ev.label}</div>`).join('');
+      h+=evs.map(ev=>{const cl={reg:'ev-reg',rec:'ev-rec',spot:'ev-reg',pend:'ev-pend',ok:'ev-ok',take:'ev-take'}[ev.type]||'ev-reg';const own=cur&&ev.tid===cur.id;return`<div class="wev ${cl}" style="${own?'font-weight:700;border-left:3px solid rgba(255,255,255,.8);':'opacity:.7'}">${own?ev.label:tn(ev.tid)+'：'+ev.label}</div>`;}).join('');
       if(isEmpty&&!isAdm())h+=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--bdr2);font-size:.65rem;opacity:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">＋</div>`;
       h+='</div>';
     });
@@ -1225,7 +1249,8 @@ function showDay(ds){
       rows=`<div class="ir"><span class="il">原師資</span><span class="iv">${tn(ev.tid)}</span></div><div class="ir"><span class="il">代課師資</span><span class="iv" style="color:var(--grn);font-weight:500">✅ ${tn(ev.tk.tid)}</span></div>`;
       if(isAdm()&&ev.req){btn=`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap"><button class="btn bg bsm" onclick="openEditEvent('take','${ev.req.id}',${ev.si})">✏️ 編輯代課</button><button class="btn bdel bsm" onclick="closeOv('ov-day');deleteRequest('${ev.req.id}')">🗑 刪除申請</button></div>`;}
     }
-    return`<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:11px;margin-bottom:9px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong style="font-size:.87rem">${ev.label}</strong>${badge}</div><div class="ir"><span class="il">時間</span><span class="iv">${ev.start}–${ev.end}</span></div>${rows}${btn}</div>`;
+    const isOwn = cur && ev.tid===cur.id;
+    return`<div style="border:1px solid ${isOwn?'var(--blue)':'var(--bdr)'};border-radius:var(--r);padding:11px;margin-bottom:9px;${isOwn?'background:rgba(37,99,235,.04)':''}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong style="font-size:.87rem;${isOwn?'color:var(--blue)':''}">${ev.label}</strong>${badge}</div><div class="ir"><span class="il">時間</span><span class="iv">${ev.start}–${ev.end}</span></div>${rows}${btn}</div>`;
   }).join('');
   openOv('ov-day');
 }
@@ -1361,25 +1386,28 @@ async function submitCancelRec(){
 // QUICK ADD
 let _qaDs='',_qaSlot='';
 function quickAddCourse(ds,slot){
-  _qaDs=ds;_qaSlot=slot;
-  document.getElementById('qa-date').value=ds;document.getElementById('qa-start').value=slot;
-  const endH=Math.min(parseInt(slot)+1,22);document.getElementById('qa-end').value=String(endH).padStart(2,'0')+':00';
-  const wd=new Date(ds).getDay();const rec=S.recurring.find(r=>r.tid===cur.id&&r.wd===wd&&r.start===slot);
-  if(rec){['dept','branch','grade'].forEach(k=>document.getElementById('qa-'+k).value=rec[k]);document.getElementById('qa-fee').value=rec.fee||0;document.getElementById('qa-ds').value=rec.ds||0;document.getElementById('qa-lec').value=rec.lec||0;}
-  else{['qa-dept','qa-branch','qa-grade'].forEach(id=>document.getElementById(id).value='');['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');}
+  // Use the unified nc-quick-add modal
+  document.getElementById('qa-date').value=ds;
+  document.getElementById('qa-start').value=slot;
+  const endH=Math.min(parseInt(slot)+1,22);
+  document.getElementById('qa-end').value=String(endH).padStart(2,'0')+':00';
+  const wd=new Date(ds).getDay();
+  const rec=S.recurring.find(r=>r.tid===cur.id&&r.wd===wd&&r.start===slot);
+  if(rec){
+    ['dept','branch','grade'].forEach(k=>document.getElementById('qa-'+k).value=rec[k]);
+    document.getElementById('qa-fee').value=rec.fee||0;
+    document.getElementById('qa-ds').value=rec.ds||0;
+    document.getElementById('qa-lec').value=rec.lec||0;
+  } else {
+    ['qa-dept','qa-branch','qa-grade'].forEach(id=>document.getElementById(id).value='');
+    ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
+  }
   document.getElementById('qa-isrec').checked=false;
-  openOv('ov-quick-add');
+  document.getElementById('qa-from-row').style.display='none';
+  openOv('ov-nc-quick-add');
 }
-async function saveQuickAdd(){
-  const dept=document.getElementById('qa-dept').value.trim(),branch=document.getElementById('qa-branch').value.trim(),grade=document.getElementById('qa-grade').value.trim();
-  const date=document.getElementById('qa-date').value,start=document.getElementById('qa-start').value,end=document.getElementById('qa-end').value;
-  const isRec=document.getElementById('qa-isrec').checked;
-  if(!dept||!branch||!grade||!date){toast('請填寫完整資訊');return;}
-  const fee=parseFloat(document.getElementById('qa-fee').value)||0,ds2=parseFloat(document.getElementById('qa-ds').value)||0,lec=parseFloat(document.getElementById('qa-lec').value)||0;
-  if(isRec){const wd=new Date(date).getDay();await fsAdd('recurring',{tid:cur.id,wd,freq:'weekly',start,end,dept,branch,grade,fee,ds:ds2,lec,from:date,to:null});toast('✅ 常態課程已新增',true);}
-  else{await fsAdd('spots',{tid:cur.id,date,start,end,dept,branch,grade,fee,ds:ds2,lec});toast('✅ 點狀課程已新增',true);}
-  closeOv('ov-quick-add');
-}
+// saveQuickAdd now handled by saveNcQuickAdd (same function)
+function saveQuickAdd(){ saveNcQuickAdd(); }
 
 // JOURNAL
 let journalKey=null;
@@ -1506,15 +1534,15 @@ function renderNcCal(){
   el.innerHTML=h;
 }
 function openNcCalDay(ds){
-  // Open quick-add modal with this date pre-filled
   document.getElementById('qa-date').value=ds;
   document.getElementById('qa-start').value='08:00';
   document.getElementById('qa-end').value='09:00';
   ['qa-dept','qa-branch','qa-grade'].forEach(id=>document.getElementById(id).value='');
   ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
   document.getElementById('qa-isrec').checked=false;
-  // Show the from/to fields for recurring
-  const fromRow=document.getElementById('qa-from-row');if(fromRow)fromRow.style.display='none';
+  document.getElementById('qa-from-row').style.display='none';
+  // Pre-set from date to the selected day
+  document.getElementById('qa-from').value=ds;
   openOv('ov-nc-quick-add');
 }
 async function saveNcQuickAdd(){
