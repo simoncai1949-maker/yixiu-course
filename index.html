@@ -115,7 +115,73 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 .empty{text-align:center;padding:28px 14px;color:var(--muted);font-size:.81rem;}.ei{font-size:1.4rem;margin-bottom:6px;}
 #toast{position:fixed;bottom:18px;right:18px;background:var(--navy);color:#fff;padding:8px 14px;border-radius:var(--r);font-size:.78rem;z-index:9999;transform:translateY(5px);opacity:0;transition:all .2s;pointer-events:none;max-width:240px;box-shadow:var(--sh2);}
 #toast.show{transform:none;opacity:1;}#toast.ok{background:var(--grn);}
-@media(max-width:660px){.sb{display:none;}.content{padding:12px;}.g3,.g4{grid-template-columns:1fr 1fr;}}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:768px){
+  /* Hide desktop sidebar */
+  .sb{display:none !important;}
+  /* Show mobile bottom nav */
+  .mob-nav{display:flex !important;}
+  /* Full width content */
+  .content{padding:8px;}
+  .main{padding:0;}
+  .topbar{padding:8px 12px;border-radius:0;}
+  .pg-title{font-size:.95rem;}
+  /* Grid adjustments */
+  .g3,.g4{grid-template-columns:1fr 1fr;}
+  .g2{grid-template-columns:1fr;}
+  /* Calendar */
+  .mgrid{grid-template-columns:repeat(7,1fr);}
+  .mc{padding:2px;min-height:44px;}
+  .mdt{font-size:.65rem;}
+  .chip{font-size:.52rem;padding:1px 3px;}
+  /* Week calendar */
+  .wk-outer{overflow-x:auto;}
+  .wgrid{min-width:560px;}
+  /* Modal */
+  .modal{width:96vw;max-width:96vw;max-height:92vh;overflow-y:auto;margin:4vh auto;}
+  /* Tables */
+  .tbl{font-size:.72rem;}
+  .tbl th,.tbl td{padding:5px 6px;}
+  /* Cards */
+  .card{border-radius:8px;}
+  .ch{padding:10px 12px;flex-wrap:wrap;gap:6px;}
+  .cb{padding:10px;}
+  /* Buttons */
+  .btn{font-size:.72rem;padding:5px 9px;}
+  /* Form */
+  .fg label{font-size:.72rem;}
+  .fg input,.fg select,.fg textarea{font-size:.82rem;}
+  /* App layout */
+  #app{flex-direction:column;}
+  .app-body{flex-direction:column;flex:1;}
+}
+@media(max-width:480px){
+  .g3{grid-template-columns:1fr;}
+  .g2{grid-template-columns:1fr;}
+  .tbl th:nth-child(n+4),.tbl td:nth-child(n+4){display:none;}
+  .modal{margin:2vh auto;}
+}
+/* Mobile bottom nav */
+.mob-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--navy);
+  border-top:1px solid rgba(255,255,255,.1);
+  z-index:200;
+  padding:4px 0 env(safe-area-inset-bottom, 4px);
+}
+.mob-nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:6px 2px;cursor:pointer;color:rgba(255,255,255,.45);
+  font-size:.52rem;gap:2px;transition:color .15s;
+}
+.mob-nav-item.on{color:#93c5fd;}
+.mob-nav-item .mni{font-size:1.1rem;line-height:1;}
+/* Add bottom padding when mobile nav is shown */
+@media(max-width:768px){
+  .main{padding-bottom:60px;}
+}
 </style>
 </head>
 <body>
@@ -182,14 +248,30 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="review" onclick="goPage(this)"><span class="sb-ico">✅</span>審核申請</div>
     <div class="sb-item" data-p="history" onclick="goPage(this)"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📝</span>教師日誌</div>
+    <div class="sb-item" data-p="holidays" onclick="goPage(this)"><span class="sb-ico">🏖️</span>假日設定</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-foot">
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.18);text-align:center;padding:4px 0 6px;letter-spacing:.5px">最後維護：2026/03/30</div>
   </div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/03/30</div>
 </nav>
+<!-- Mobile Bottom Navigation -->
+<div class="mob-nav" id="mob-nav">
+  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
+  <div class="mob-nav-item" data-p="mycourses" onclick="mobNav(this)"><div class="mni">📖</div>我的課</div>
+  <div class="mob-nav-item" data-p="newcourse" onclick="mobNav(this)"><div class="mni">➕</div>新增</div>
+  <div class="mob-nav-item" data-p="leave" onclick="mobNav(this)"><div class="mni">📝</div>申請</div>
+  <div class="mob-nav-item" data-p="sub" onclick="mobNav(this)"><div class="mni">🔄</div>代課</div>
+</div>
+<div class="mob-nav" id="mob-nav-adm" style="display:none">
+  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
+  <div class="mob-nav-item" data-p="schedule" onclick="mobNav(this)"><div class="mni">📋</div>課表</div>
+  <div class="mob-nav-item" data-p="review" onclick="mobNav(this)"><div class="mni">✅</div>審核</div>
+  <div class="mob-nav-item" data-p="teachers" onclick="mobNav(this)"><div class="mni">👤</div>師資</div>
+  <div class="mob-nav-item" data-p="history" onclick="mobNav(this)"><div class="mni">📜</div>紀錄</div>
+</div>
 <div class="main">
   <div class="topbar">
     <div class="tb-title" id="pg-title">行事曆總覽</div>
@@ -264,7 +346,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div class="tabs">
         <button class="tab on" onclick="ncTab(this,'rec')">常態課程（每週）</button>
         <button class="tab" onclick="ncTab(this,'spot')">點狀課程（單次）</button>
-        <button class="tab" onclick="ncTab(this,'calcal')">📅 行事曆新增</button>
+        <button class="tab" onclick="ncTab(this,'calcal')">📅 行事曆新增／修改</button>
       </div>
       <div id="nc-rec">
         <div class="card">
@@ -468,6 +550,42 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       </div>
     </div>
 
+    <div id="pg-holidays" class="pg" style="display:none">
+      <div class="notice">設定後，所有常態課程在這些日期將自動從行事曆移除，不需逐一申請。</div>
+      <div class="card">
+        <div class="ch"><div class="ct"><div class="dot"></div>新增假日／停課</div></div>
+        <div class="cb">
+          <div class="gr g2">
+            <div class="fg"><label>類型</label>
+              <select id="hol-type">
+                <option value="day">單日假日</option>
+                <option value="week">整週停課</option>
+                <option value="range">自訂區間</option>
+              </select>
+            </div>
+            <div class="fg"><label>說明</label><input type="text" id="hol-name" placeholder="例：段考週、國慶日" /></div>
+          </div>
+          <div class="gr g2" id="hol-date-row">
+            <div class="fg"><label>日期（起）</label><input type="date" id="hol-from" /></div>
+            <div class="fg" id="hol-to-col"><label>日期（迄，整週可不填）</label><input type="date" id="hol-to" /></div>
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label>適用師資</label>
+            <select id="hol-scope">
+              <option value="all">全體師資</option>
+            </select>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <button class="btn bn" onclick="saveHoliday()">新增假日</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="ct"><div class="dot"></div>已設定的假日</div></div>
+        <div class="cb" style="padding:0"><div id="holidays-list" style="padding:12px"></div></div>
+      </div>
+    </div>
+
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
     </div>
@@ -537,9 +655,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 <div class="ov" id="ov-firstpw"><div class="modal"><div class="mh"><div class="mht">🔐 首次登入 — 設定密碼</div></div><div class="mb"><div class="notice" style="margin-bottom:10px">歡迎！請設定您的登入密碼。</div><div class="gr" style="margin-bottom:0"><div class="fg"><label>新密碼</label><input type="password" id="fp-pw"></div><div class="fg"><label>確認密碼</label><input type="password" id="fp-pw2"></div></div><div id="fp-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doFirstPw()">確認設定</button></div></div></div>
 <div class="ov" id="ov-export"><div class="modal"><div class="mh"><div class="mht">📊 匯出段數表</div><button class="mcls" onclick="closeOv('ov-export')">✕</button></div><div class="mb"><div class="gr g2"><div class="fg"><label>師資</label><select id="exp-t"></select></div><div class="fg"><label>匯出範圍</label><select id="exp-range" onchange="document.getElementById('exp-custom-row').style.display=this.value==='custom'?'flex':'none'"><option value="week">本週</option><option value="month">本月</option><option value="custom">自訂月份</option></select></div></div><div class="fg" id="exp-custom-row" style="display:none;margin-bottom:0"><label>選擇月份</label><input type="month" id="exp-month"></div></div><div class="mf"><button class="btn bg" onclick="closeOv('ov-export')">取消</button><button class="btn bn" onclick="doExport()">匯出 Excel</button></div></div></div>
 
-<div id="toast"></div>
-
-<script type="module">
+<div id="toast"></div<script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -556,7 +672,7 @@ const db = getFirestore(app);
 
 const ADMIN_PW = 'alex8888@';
 const ADMIN_ID = 'admin';
-let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[] };
+let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[] };
 let cur = null;
 let unsubscribers = [];
 
@@ -597,7 +713,7 @@ function safeDelete(col, id, confirmMsg) {
 
 function setupListeners() {
   unsubscribers.forEach(u=>u()); unsubscribers=[];
-  ['teachers','courses','recurring','spots','requests','history','journals'].forEach(col=>{
+  ['teachers','courses','recurring','spots','requests','history','journals','holidays'].forEach(col=>{
     const unsub=onSnapshot(collection(db,col), snap=>{
       S[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
       setSyncStatus('ok'); refreshPage();
@@ -687,6 +803,11 @@ function enterApp(){
   document.getElementById('sb-ur').textContent=isAdm()?'管理員（易學國文）':'教師';
   document.getElementById('nav-t').style.display=isAdm()?'none':'block';
   document.getElementById('nav-a').style.display=isAdm()?'block':'none';
+  // Mobile nav
+  const mobNavT=document.getElementById('mob-nav');
+  const mobNavA=document.getElementById('mob-nav-adm');
+  if(mobNavT) mobNavT.style.display=isAdm()?'none':'flex';
+  if(mobNavA) mobNavA.style.display=isAdm()?'flex':'none';
   const histNav=document.getElementById('nav-history-t');
   if(histNav&&!isAdm()){const t=S.teachers.find(x=>x.id===cur.id);histNav.style.display=(t?.perm?.showHistory)?'flex':'none';}
   document.getElementById('lg-pw').value='';
@@ -697,7 +818,7 @@ async function doFirstPw(){const pw=document.getElementById('fp-pw').value,pw2=d
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌'};
+const TITLES={cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function goPage(el){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.pg').forEach(x=>x.style.display='none');
@@ -715,6 +836,11 @@ function goPage(el){
   if(p==='sub')renderSub();
   if(p==='review')renderReview();
   if(p==='history'){document.getElementById('hist-month').value=new Date().toISOString().slice(0,7);renderHistory();}
+  if(p==='holidays'){
+    const sel=document.getElementById('hol-scope');
+    if(sel){sel.innerHTML='<option value="all">全體師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
+    renderHolidays();
+  }
   if(p==='journals'){document.getElementById('jn-filter-m').value=new Date().toISOString().slice(0,7);const fts=document.getElementById('jn-filter-t');if(isAdm()&&fts){fts.style.display='block';const opts=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');fts.innerHTML='<option value="">全部師資</option>'+opts;}renderJournals();}
 }
 
@@ -1146,9 +1272,11 @@ function setView(v){
 }
 function getEventsForDate(ds){
   const wd=new Date(ds).getDay(),events=[],viewer=cur?cur.id:ADMIN_ID;
-  S.courses.forEach(c=>{if(c.date!==ds||!canSee(viewer,c.tid))return;const ov=S.requests.some(r=>r.status==='approved'&&r.tid===c.tid&&r.sessions.some(s=>s.date===ds&&s.start===c.start));if(!ov)events.push({type:'reg',label:`${c.dept} ${c.branch} ${c.grade}`,tid:c.tid,start:c.start,end:c.end,srcId:c.id,srcCol:'courses',c});});
+  // Check if this date is a holiday
+  S.courses.forEach(c=>{if(c.date!==ds||!canSee(viewer,c.tid))return;if(isHoliday(ds,c.tid))return;const ov=S.requests.some(r=>r.status==='approved'&&r.tid===c.tid&&r.sessions.some(s=>s.date===ds&&s.start===c.start));if(!ov)events.push({type:'reg',label:`${c.dept} ${c.branch} ${c.grade}`,tid:c.tid,start:c.start,end:c.end,srcId:c.id,srcCol:'courses',c});});
   S.recurring.forEach(r=>{
     if(r.wd!==wd||(r.from&&ds<r.from)||(r.to&&ds>r.to)||!canSee(viewer,r.tid))return;
+    if(isHoliday(ds,r.tid))return; // skip on holidays
     const isCancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===r.tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
     if(isCancelled)return;
     const freq=r.freq||'weekly';
@@ -1158,7 +1286,7 @@ function getEventsForDate(ds){
     if(req){const si=req.sessions.findIndex(s=>s.date===ds&&s.start===r.start);const tk=req.takers[si];if(tk)events.push({type:'take',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,srcId:r.id,srcCol:'recurring',req,si,s:req.sessions[si],tk});else events.push({type:'ok',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,srcId:r.id,srcCol:'recurring',req,si,s:req.sessions[si]});}
     else events.push({type:'rec',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,srcId:r.id,srcCol:'recurring',r});
   });
-  S.spots.forEach(s=>{if(s.date!==ds||!canSee(viewer,s.tid))return;events.push({type:'spot',label:`${s.dept} ${s.branch} ${s.grade}`,tid:s.tid,start:s.start,end:s.end,srcId:s.id,srcCol:'spots',s});});
+  S.spots.forEach(s=>{if(s.date!==ds||!canSee(viewer,s.tid))return;if(isHoliday(ds,s.tid))return;events.push({type:'spot',label:`${s.dept} ${s.branch} ${s.grade}`,tid:s.tid,start:s.start,end:s.end,srcId:s.id,srcCol:'spots',s});});
   S.requests.forEach(req=>{if(req.status==='rejected')return;req.sessions.forEach((s,si)=>{if(s.date!==ds||!canSee(viewer,req.tid))return;const tk=req.takers[si];if(tk)events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});else if(req.status==='approved')events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});});});
   // Sort: current user's events first, then by start time
   return events.sort((a,b)=>{
@@ -1510,30 +1638,44 @@ window.renderMyCourses=renderMyCourses; window.setMcView=setMcView; window.setMc
 let ncCalY=new Date().getFullYear(), ncCalM=new Date().getMonth();
 function ncCalStep(d){ncCalM+=d;if(ncCalM<0){ncCalM=11;ncCalY--;}if(ncCalM>11){ncCalM=0;ncCalY++;}renderNcCal();}
 function renderNcCal(){
-  const el=document.getElementById('nc-cal-body');
-  if(!el)return;
+  const el=document.getElementById('nc-cal-body');if(!el)return;
   const lbl=document.getElementById('nc-cal-lbl');
   if(lbl)lbl.textContent=ncCalY+'年'+(ncCalM+1)+'月';
   const first=new Date(ncCalY,ncCalM,1).getDay();
   const days=new Date(ncCalY,ncCalM+1,0).getDate();
   const DZ2=['日','一','二','三','四','五','六'];
-  let h='<div class="mgrid">';
+  const todayStr=new Date().toISOString().slice(0,10);
+  let h='<div class="mgrid" style="gap:2px">';
   DZ2.forEach(d=>h+=`<div class="mdn">${d}</div>`);
   for(let i=0;i<first;i++)h+='<div class="mc emp"></div>';
   for(let d=1;d<=days;d++){
     const ds=ncCalY+'-'+String(ncCalM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const evs=getMyCourseEvents(cur.id,ds);
-    let chips=evs.slice(0,3).map(ev=>`<div class="chip ${ev.src==='rec'?'c-rec':'c-reg'}" style="font-size:.58rem">${ev.dept}${ev.branch}</div>`).join('');
-    if(evs.length>3)chips+=`<div class="chip c-pend">+${evs.length-3}</div>`;
-    h+=`<div class="mc hev" style="cursor:pointer;min-height:58px" onclick="openNcCalDay('${ds}')">
+    const isToday=ds===todayStr;
+    // Build event chips - each chip is clickable to edit
+    let chips=evs.slice(0,3).map(ev=>{
+      const src=ev.src==='rec'?'rec':ev.src==='spot'?'spot':'admin';
+      const eid=ev.id||'';
+      return`<div class="chip ${ev.src==='rec'?'c-rec':'c-reg'}"
+        style="font-size:.58rem;cursor:pointer;position:relative"
+        onclick="event.stopPropagation();openNcEditEvent('${src}','${eid}','${ds}','${ev.start||''}','${ev.end||''}','${ev.dept||''}','${ev.branch||''}','${ev.grade||''}')"
+        title="點擊編輯">${ev.dept}${ev.branch}</div>`;
+    }).join('');
+    if(evs.length>3)chips+=`<div class="chip c-pend" style="font-size:.58rem">+${evs.length-3}</div>`;
+    h+=`<div class="mc ${isToday?'tod':''}"
+      style="cursor:pointer;min-height:62px;position:relative"
+      onclick="openNcCalDay('${ds}')">
       <div class="mdt">${d}</div>
       ${chips}
+      <div style="position:absolute;bottom:3px;right:3px;font-size:.65rem;color:var(--blue);opacity:.3;line-height:1">＋</div>
     </div>`;
   }
   h+='</div>';
   el.innerHTML=h;
 }
+
 function openNcCalDay(ds){
+  // Click on empty space = new event
   document.getElementById('qa-date').value=ds;
   document.getElementById('qa-start').value='08:00';
   document.getElementById('qa-end').value='09:00';
@@ -1541,10 +1683,81 @@ function openNcCalDay(ds){
   ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
   document.getElementById('qa-isrec').checked=false;
   document.getElementById('qa-from-row').style.display='none';
-  // Pre-set from date to the selected day
   document.getElementById('qa-from').value=ds;
+  document.getElementById('qa-modal-title').textContent='➕ 新增課程';
+  document.getElementById('qa-save-btn').textContent='新增';
+  document.getElementById('qa-save-btn').onclick=saveNcQuickAdd;
+  document.getElementById('qa-del-btn').style.display='none';
+  window._ncEditId=null; window._ncEditSrc=null;
   openOv('ov-nc-quick-add');
 }
+function openNcEditEvent(src,id,date,start,end,dept,branch,grade){
+  // Click on existing event = edit mode
+  window._ncEditId=id; window._ncEditSrc=src;
+  document.getElementById('qa-date').value=date;
+  document.getElementById('qa-start').value=start;
+  document.getElementById('qa-end').value=end;
+  document.getElementById('qa-dept').value=dept;
+  document.getElementById('qa-branch').value=branch;
+  document.getElementById('qa-grade').value=grade;
+  // Load fee data
+  let obj=null;
+  if(src==='rec') obj=S.recurring.find(x=>x.id===id);
+  else if(src==='spot') obj=S.spots.find(x=>x.id===id);
+  if(obj){
+    document.getElementById('qa-fee').value=obj.fee||0;
+    document.getElementById('qa-ds').value=obj.ds||0;
+    document.getElementById('qa-lec').value=obj.lec||0;
+  }
+  const isRec=src==='rec';
+  document.getElementById('qa-isrec').checked=isRec;
+  document.getElementById('qa-from-row').style.display=isRec?'grid':'none';
+  if(isRec&&obj){
+    document.getElementById('qa-from').value=obj.from||'';
+    document.getElementById('qa-to').value=obj.to||'';
+  }
+  document.getElementById('qa-modal-title').textContent='✏️ 編輯課程';
+  document.getElementById('qa-save-btn').textContent='儲存';
+  document.getElementById('qa-save-btn').onclick=saveNcEditEvent;
+  document.getElementById('qa-del-btn').style.display='inline-flex';
+  document.getElementById('qa-del-btn').onclick=deleteNcEvent;
+  openOv('ov-nc-quick-add');
+}
+async function saveNcEditEvent(){
+  const src=window._ncEditSrc, id=window._ncEditId;
+  if(!src||!id){saveNcQuickAdd();return;}
+  const dept=document.getElementById('qa-dept').value.trim();
+  const branch=document.getElementById('qa-branch').value.trim();
+  const grade=document.getElementById('qa-grade').value.trim();
+  const start=document.getElementById('qa-start').value;
+  const end=document.getElementById('qa-end').value;
+  const date=document.getElementById('qa-date').value;
+  const fee=parseFloat(document.getElementById('qa-fee').value)||0;
+  const ds2=parseFloat(document.getElementById('qa-ds').value)||0;
+  const lec=parseFloat(document.getElementById('qa-lec').value)||0;
+  if(!dept||!branch||!grade){toast('請填寫班部分校年段');return;}
+  if(src==='rec'){
+    const from=document.getElementById('qa-from').value||null;
+    const to=document.getElementById('qa-to').value||null;
+    const wd=parseInt(document.getElementById('qa-wd-hidden')?.value||new Date(date).getDay());
+    await fsUpdate('recurring',id,{dept,branch,grade,start,end,fee,ds:ds2,lec,from,to});
+    toast('✅ 常態課程已更新',true);
+  } else {
+    await fsUpdate('spots',id,{dept,branch,grade,start,end,date,fee,ds:ds2,lec});
+    toast('✅ 點狀課程已更新',true);
+  }
+  closeOv('ov-nc-quick-add'); renderNcCal();
+}
+async function deleteNcEvent(){
+  const src=window._ncEditSrc, id=window._ncEditId;
+  if(!src||!id)return;
+  if(!confirm('確定要刪除這堂課程嗎？'))return;
+  const col=src==='rec'?'recurring':'spots';
+  await fsDel(col,id);
+  closeOv('ov-nc-quick-add'); renderNcCal();
+  toast('已刪除',true);
+}
+
 async function saveNcQuickAdd(){
   const dept=document.getElementById('qa-dept').value.trim();
   const branch=document.getElementById('qa-branch').value.trim();
@@ -1571,7 +1784,7 @@ async function saveNcQuickAdd(){
   renderNcCal();
 }
 window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail;
-window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.saveNcQuickAdd=saveNcQuickAdd;
+window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd;
 window.setupLeave=setupLeave; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
@@ -1586,7 +1799,74 @@ window.adminConfirmDelete=adminConfirmDelete; window.deleteAdminEdit=deleteAdmin
 window.delRecSingle=delRecSingle; window.delRecAll=delRecAll;
 window.quickAddCourse=quickAddCourse; window.saveQuickAdd=saveQuickAdd;
 window.openJournal=openJournal; window.saveJournal=saveJournal; window.renderJournals=renderJournals;
+
+// MOBILE NAV
+function mobNav(el){
+  const p = el.dataset.p;
+  // Sync with desktop sidebar
+  const sbItem = document.querySelector(`.sb-item[data-p="${p}"]`);
+  if(sbItem) goPage(sbItem);
+  else {
+    // Manually navigate
+    document.querySelectorAll('.pg').forEach(x=>x.style.display='none');
+    document.getElementById('pg-'+p).style.display='block';
+    document.getElementById('pg-title').textContent=TITLES[p]||'';
+    fillSel();
+  }
+  // Update mobile nav active state
+  document.querySelectorAll('.mob-nav-item').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+}
+function updateMobNav(p){
+  document.querySelectorAll('.mob-nav-item').forEach(x=>{
+    x.classList.toggle('on', x.dataset.p===p);
+  });
+}
 window.openOv=openOv; window.closeOv=closeOv;
+window.saveHoliday=saveHoliday; window.renderHolidays=renderHolidays; window.holDateChange=holDateChange;
+window.mobNav=mobNav;
+
+// ── HOLIDAYS ──
+function holDateChange(){
+  // Auto-set to-date same as from-date for convenience
+  const from=document.getElementById('hol-from').value;
+  const toEl=document.getElementById('hol-to');
+  if(from&&!toEl.value) toEl.value=from;
+}
+async function saveHoliday(){
+  const name=document.getElementById('hol-name').value.trim();
+  const from=document.getElementById('hol-from').value;
+  const to=document.getElementById('hol-to').value||from; // single day if no end
+  const scope=document.getElementById('hol-scope').value;
+  if(!name){toast('請填寫說明');return;}
+  if(!from){toast('請選擇開始日期');return;}
+  if(to<from){toast('結束日期不能早於開始日期');return;}
+  const type=to===from?'day':'range';
+  await fsAdd('holidays',{type,name,from,to,scope,at:new Date().toISOString()});
+  await logHistory('course','新增假日設定：'+name+' ('+from+(to!==from?' ~ '+to:'')+')',ADMIN_ID);
+  ['hol-name','hol-from','hol-to'].forEach(id=>document.getElementById(id).value='');
+  toast('✅ 假日已設定，行事曆將自動更新',true);
+  renderHolidays();
+}
+function renderHolidays(){
+  const el=document.getElementById('holidays-list');if(!el)return;
+  if(!S.holidays||!S.holidays.length){el.innerHTML='<div class="empty"><div class="ei">🏖️</div>尚無假日設定</div>';return;}
+  const sorted=[...S.holidays].sort((a,b)=>a.from.localeCompare(b.from));
+  el.innerHTML='<table class="tbl"><thead><tr><th>說明</th><th>日期區間</th><th>適用</th><th style="width:60px"></th></tr></thead><tbody>'+
+    sorted.map(h=>`<tr>
+      <td style="font-weight:500">${h.name}</td>
+      <td style="font-size:.75rem">${h.from}${h.to&&h.to!==h.from?' ～ '+h.to:''}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${h.scope==='all'?'全體師資':tn(h.scope)}</td>
+      <td><button class="btn bdel bxs" onclick="safeDelete('holidays','${h.id}','確定刪除「${h.name}」假日設定？')">刪</button></td>
+    </tr>`).join('')+'</tbody></table>';
+}
+function isHoliday(ds, tid){
+  if(!S.holidays||!S.holidays.length) return false;
+  return S.holidays.some(h=>{
+    if(h.scope!=='all'&&h.scope!==tid) return false;
+    return ds>=h.from && ds<=(h.to||h.from);
+  });
+}
 </script>
 
 <div class="ov" id="ov-admin-edit">
@@ -1857,7 +2137,7 @@ window.openOv=openOv; window.closeOv=closeOv;
   <div class="modal">
     <div class="mh">
       <div>
-        <div class="mht">➕ 新增課程</div>
+        <div class="mht" id="qa-modal-title">➕ 新增課程</div>
         <div id="qa-date-lbl" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div>
       </div>
       <button class="mcls" onclick="closeOv('ov-nc-quick-add')">✕</button>
@@ -1893,7 +2173,8 @@ window.openOv=openOv; window.closeOv=closeOv;
     </div>
     <div class="mf">
       <button class="btn bg" onclick="closeOv('ov-nc-quick-add')">取消</button>
-      <button class="btn bn" onclick="saveNcQuickAdd()">新增</button>
+      <button class="btn bdel bsm" id="qa-del-btn" style="display:none" onclick="deleteNcEvent()">🗑 刪除</button>
+      <button class="btn bn" id="qa-save-btn" onclick="saveNcQuickAdd()">新增</button>
     </div>
   </div>
 </div>
