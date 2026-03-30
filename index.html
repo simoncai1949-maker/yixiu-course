@@ -1163,9 +1163,41 @@ function populateLeaveRecurring(){
   if(current)sel.value=current;
 }
 function addSess(prefill){
-  sc++;const n=sc,div=document.createElement('div');div.className='sessb';div.id='s'+n;
-  const dept=prefill?.dept||'',branch=prefill?.branch||'',grade=prefill?.grade||'',ss=prefill?.start||'08:00',se=prefill?.end||'09:00',sd=prefill?.date||'';
-  div.innerHTML=`<div class="sessh"><div class="sesstag">堂次 ${n}</div>${n>1?`<button class="btn bdel bxs" onclick="document.getElementById('s${n}').remove()">移除</button>`:''}</div><div class="gr g2"><div class="fg"><label>日期</label><input type="date" class="sd" value="${sd}" /></div><div class="gr g2" style="margin-bottom:0"><div class="fg"><label>開始</label><input type="time" class="ss" value="${ss}" /></div><div class="fg"><label>結束</label><input type="time" class="se" value="${se}" /></div></div></div><div class="gr g3" style="margin-bottom:0"><div class="fg"><label>班部</label><input type="text" class="sdept" placeholder="文城" value="${dept}" /></div><div class="fg"><label>分校</label><input type="text" class="sbranch" placeholder="中平" value="${branch}" /></div><div class="fg"><label>年段</label><input type="text" class="sgrade" placeholder="國八" value="${grade}" /></div></div><div class="hint" style="margin-top:6px">示範：文城 中平 國八</div>`;
+  sc++;
+  const n=sc;
+  const dept=prefill?.dept||'';
+  const branch=prefill?.branch||'';
+  const grade=prefill?.grade||'';
+  const ss=prefill?.start||'08:00';
+  const se=prefill?.end||'09:00';
+  const sd=prefill?.date||'';
+  const div=document.createElement('div');
+  div.className='sessb'; div.id='s'+n;
+  div.innerHTML=`
+    <div class="sessh">
+      <div class="sesstag">堂次 ${n}</div>
+      ${n>1?`<button class="btn bdel bxs" onclick="document.getElementById('s${n}').remove()">移除</button>`:''}
+    </div>
+    <div class="gr g2">
+      <div class="fg"><label>日期</label><input type="date" class="sd" /></div>
+      <div class="gr g2" style="margin-bottom:0">
+        <div class="fg"><label>開始</label><input type="time" class="ss" /></div>
+        <div class="fg"><label>結束</label><input type="time" class="se" /></div>
+      </div>
+    </div>
+    <div class="gr g3" style="margin-bottom:0">
+      <div class="fg"><label>班部</label><input type="text" class="sdept" placeholder="文城" /></div>
+      <div class="fg"><label>分校</label><input type="text" class="sbranch" placeholder="中平" /></div>
+      <div class="fg"><label>年段</label><input type="text" class="sgrade" placeholder="國八" /></div>
+    </div>
+    <div class="hint" style="margin-top:6px">示範：文城 中平 國八</div>`;
+  // Set values after render to avoid browser format warnings
+  if(sd) div.querySelector('.sd').value=sd;
+  div.querySelector('.ss').value=ss;
+  div.querySelector('.se').value=se;
+  if(dept) div.querySelector('.sdept').value=dept;
+  if(branch) div.querySelector('.sbranch').value=branch;
+  if(grade) div.querySelector('.sgrade').value=grade;
   document.getElementById('sess-wrap').appendChild(div);
 }
 function addSessFromRec(){
