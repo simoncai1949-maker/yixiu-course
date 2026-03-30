@@ -1249,7 +1249,7 @@ let tId=null,tSi=null;
 function openTake(rid,si){
   const r=S.requests.find(x=>x.id===rid),s=r.sessions[si];tId=rid;tSi=si;
   document.getElementById('take-chk').checked=false;
-  const selRow=document.getElementById('take-sel-row');
+  const selRow=document.getElementById('take-name-row');
   if(selRow){if(isAdm()){selRow.style.display='flex';fillSel();document.getElementById('take-sel').value='';}else{selRow.style.display='none';}}
   document.getElementById('take-info').innerHTML=`<div class="ir"><span class="il">班級</span><span class="iv"><strong>${s.dept} ${s.branch} ${s.grade}</strong></span></div><div class="ir"><span class="il">時間</span><span class="iv">${s.date} ${s.start}–${s.end}</span></div><div class="ir"><span class="il">原師資</span><span class="iv" style="color:var(--blue)">${tn(r.tid)}</span></div>${!isAdm()?`<div class="notice" style="margin-top:8px;background:var(--gbg);border-left-color:var(--grn);color:var(--grn)">您將以「<strong>${cur.name}</strong>」的身份接課</div>`:''}`;
   openOv('ov-take');
@@ -1687,7 +1687,7 @@ function renderNcCal(){
     const isToday=ds===todayStr;
     // Build event chips - each chip is clickable to edit
     let chips=evs.slice(0,3).map(ev=>{
-      const src=ev.src==='rec'?'rec':ev.src==='spot'?'spot':'admin';
+      const src=ev.src; // 'rec', 'spot', or 'admin'
       const eid=ev.id||'';
       return`<div class="chip ${ev.src==='rec'?'c-rec':'c-reg'}"
         style="font-size:.58rem;cursor:pointer;position:relative"
@@ -1725,7 +1725,6 @@ function openNcCalDay(ds){
   openOv('ov-nc-quick-add');
 }
 function openNcEditEvent(src,id,date,start,end,dept,branch,grade){
-  // Click on existing event = edit mode
   window._ncEditId=id; window._ncEditSrc=src;
   document.getElementById('qa-date').value=date;
   document.getElementById('qa-start').value=start;
@@ -1733,23 +1732,27 @@ function openNcEditEvent(src,id,date,start,end,dept,branch,grade){
   document.getElementById('qa-dept').value=dept;
   document.getElementById('qa-branch').value=branch;
   document.getElementById('qa-grade').value=grade;
-  // Load fee data
+  // Load fee data from correct collection
   let obj=null;
   if(src==='rec') obj=S.recurring.find(x=>x.id===id);
   else if(src==='spot') obj=S.spots.find(x=>x.id===id);
+  else if(src==='admin') obj=S.courses.find(x=>x.id===id);
   if(obj){
     document.getElementById('qa-fee').value=obj.fee||0;
     document.getElementById('qa-ds').value=obj.ds||0;
     document.getElementById('qa-lec').value=obj.lec||0;
   }
   const isRec=src==='rec';
-  document.getElementById('qa-isrec').checked=isRec;
+  const isrecCkb=document.getElementById('qa-isrec');
+  if(isrecCkb){isrecCkb.checked=isRec; isrecCkb.disabled=src!=='spot';} // only spot can toggle to rec
   document.getElementById('qa-from-row').style.display=isRec?'grid':'none';
   if(isRec&&obj){
     document.getElementById('qa-from').value=obj.from||'';
     document.getElementById('qa-to').value=obj.to||'';
   }
-  document.getElementById('qa-modal-title').textContent='✏️ 編輯課程';
+  // Show source type hint
+  const srcHint={rec:'常態課程',spot:'點狀課程',admin:'管理課程'};
+  document.getElementById('qa-modal-title').textContent='✏️ 編輯'+(srcHint[src]||'課程');
   document.getElementById('qa-save-btn').textContent='儲存';
   document.getElementById('qa-save-btn').onclick=saveNcEditEvent;
   document.getElementById('qa-del-btn').style.display='inline-flex';
@@ -1772,9 +1775,11 @@ async function saveNcEditEvent(){
   if(src==='rec'){
     const from=document.getElementById('qa-from').value||null;
     const to=document.getElementById('qa-to').value||null;
-    const wd=parseInt(document.getElementById('qa-wd-hidden')?.value||new Date(date).getDay());
     await fsUpdate('recurring',id,{dept,branch,grade,start,end,fee,ds:ds2,lec,from,to});
     toast('✅ 常態課程已更新',true);
+  } else if(src==='admin'){
+    await fsUpdate('courses',id,{dept,branch,grade,start,end,date,fee,ds:ds2,lec});
+    toast('✅ 課程已更新',true);
   } else {
     await fsUpdate('spots',id,{dept,branch,grade,start,end,date,fee,ds:ds2,lec});
     toast('✅ 點狀課程已更新',true);
@@ -1785,7 +1790,7 @@ async function deleteNcEvent(){
   const src=window._ncEditSrc, id=window._ncEditId;
   if(!src||!id)return;
   if(!confirm('確定要刪除這堂課程嗎？'))return;
-  const col=src==='rec'?'recurring':'spots';
+  const col=src==='rec'?'recurring':src==='admin'?'courses':'spots';
   await fsDel(col,id);
   closeOv('ov-nc-quick-add'); renderNcCal();
   toast('已刪除',true);
@@ -2067,6 +2072,18 @@ function isHoliday(ds, tid){
         <div class="fg"><label>講義費</label><input type="number" id="er-lec" min="0" /></div>
       </div>
       <div class="priv-notice">🔒 費用欄位僅本人及管理員可見。</div>
+      <hr>
+      <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:8px">套用範圍</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.8rem;cursor:pointer">
+          <input type="radio" name="er-scope" value="all" checked style="accent-color:var(--blue)">
+          修改所有週次
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:.8rem;cursor:pointer">
+          <input type="radio" name="er-scope" value="from-date" style="accent-color:var(--blue);margin-top:2px">
+          <div>從某日期起套用<div style="margin-top:5px"><input type="date" id="er-scope-date" style="font-size:.78rem;padding:4px 8px" /></div></div>
+        </label>
+      </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-rec')">取消</button><button class="btn bn" onclick="saveEditRec()">儲存</button></div>
   </div>
