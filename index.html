@@ -655,7 +655,8 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 <div class="ov" id="ov-firstpw"><div class="modal"><div class="mh"><div class="mht">🔐 首次登入 — 設定密碼</div></div><div class="mb"><div class="notice" style="margin-bottom:10px">歡迎！請設定您的登入密碼。</div><div class="gr" style="margin-bottom:0"><div class="fg"><label>新密碼</label><input type="password" id="fp-pw"></div><div class="fg"><label>確認密碼</label><input type="password" id="fp-pw2"></div></div><div id="fp-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doFirstPw()">確認設定</button></div></div></div>
 <div class="ov" id="ov-export"><div class="modal"><div class="mh"><div class="mht">📊 匯出段數表</div><button class="mcls" onclick="closeOv('ov-export')">✕</button></div><div class="mb"><div class="gr g2"><div class="fg"><label>師資</label><select id="exp-t"></select></div><div class="fg"><label>匯出範圍</label><select id="exp-range" onchange="document.getElementById('exp-custom-row').style.display=this.value==='custom'?'flex':'none'"><option value="week">本週</option><option value="month">本月</option><option value="custom">自訂月份</option></select></div></div><div class="fg" id="exp-custom-row" style="display:none;margin-bottom:0"><label>選擇月份</label><input type="month" id="exp-month"></div></div><div class="mf"><button class="btn bg" onclick="closeOv('ov-export')">取消</button><button class="btn bn" onclick="doExport()">匯出 Excel</button></div></div></div>
 
-<div id="toast"></div<script type="module">
+<div id="toast"></div>
+<script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
