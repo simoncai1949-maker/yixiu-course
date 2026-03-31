@@ -121,7 +121,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   /* Hide desktop sidebar */
   .sb{display:none !important;}
   /* Show mobile bottom nav */
-  .mob-nav{display:flex !important;}
+  .mob-nav.mob-active{display:flex !important;}
   /* Full width content */
   .content{padding:8px;}
   .main{padding:0;}
@@ -164,7 +164,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 }
 /* Mobile bottom nav */
 .mob-nav{
-  display:none;
+  display:none !important;
   position:fixed;bottom:0;left:0;right:0;
   background:var(--navy);
   border-top:1px solid rgba(255,255,255,.1);
@@ -804,17 +804,17 @@ function enterApp(){
   document.getElementById('sb-ur').textContent=isAdm()?'管理員（易學國文）':'教師';
   document.getElementById('nav-t').style.display=isAdm()?'none':'block';
   document.getElementById('nav-a').style.display=isAdm()?'block':'none';
-  // Mobile nav
+  // Mobile nav - toggle active one, CSS media query handles show/hide
   const mobNavT=document.getElementById('mob-nav');
   const mobNavA=document.getElementById('mob-nav-adm');
-  if(mobNavT) mobNavT.style.display=isAdm()?'none':'flex';
-  if(mobNavA) mobNavA.style.display=isAdm()?'flex':'none';
+  if(mobNavT) mobNavT.classList.toggle('mob-active', !isAdm());
+  if(mobNavA) mobNavA.classList.toggle('mob-active', isAdm());
   const histNav=document.getElementById('nav-history-t');
   if(histNav&&!isAdm()){const t=S.teachers.find(x=>x.id===cur.id);histNav.style.display=(t?.perm?.showHistory)?'flex':'none';}
   document.getElementById('lg-pw').value='';
   fillSel(); goPage(document.querySelector('.sb-item[data-p="cal"]'));
 }
-function doLogout(){cur=null;clearSession();document.getElementById('app').classList.remove('show');document.getElementById('login-screen').classList.add('show');document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.pg').forEach(x=>x.style.display='none');document.getElementById('lg-pw').value='';popLoginSel();}
+function doLogout(){cur=null;clearSession();document.getElementById('app').classList.remove('show');document.getElementById('login-screen').classList.add('show');document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.pg').forEach(x=>x.style.display='none');document.getElementById('lg-pw').value='';popLoginSel();document.querySelectorAll('.mob-nav').forEach(x=>x.classList.remove('mob-active'));}
 async function doFirstPw(){const pw=document.getElementById('fp-pw').value,pw2=document.getElementById('fp-pw2').value,err=document.getElementById('fp-err');err.textContent='';if(!pw){err.textContent='請輸入密碼';return;}if(pw!==pw2){err.textContent='兩次輸入不符';return;}await fsUpdate('teachers',cur.id,{pw});closeOv('ov-firstpw');toast('✅ 密碼設定完成',true);}
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
@@ -1685,26 +1685,64 @@ function renderNcCal(){
     const ds=ncCalY+'-'+String(ncCalM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const evs=getMyCourseEvents(cur.id,ds);
     const isToday=ds===todayStr;
-    // Build event chips - each chip is clickable to edit
-    let chips=evs.slice(0,3).map(ev=>{
-      const src=ev.src; // 'rec', 'spot', or 'admin'
-      const eid=ev.id||'';
+    // Each chip opens edit for that specific course
+    let chips=evs.map((ev,i)=>{
+      // Store event data in window._ncEvCache for retrieval
+      const cacheKey='ncev_'+ds.replace(/-/g,'')+'_'+i;
+      window[cacheKey]={src:ev.src,id:ev.id||'',ds,start:ev.start||'',end:ev.end||'',dept:ev.dept||'',branch:ev.branch||'',grade:ev.grade||''};
       return`<div class="chip ${ev.src==='rec'?'c-rec':'c-reg'}"
-        style="font-size:.58rem;cursor:pointer;position:relative"
-        onclick="event.stopPropagation();openNcEditEvent('${src}','${eid}','${ds}','${ev.start||''}','${ev.end||''}','${ev.dept||''}','${ev.branch||''}','${ev.grade||''}')"
-        title="點擊編輯">${ev.dept}${ev.branch}</div>`;
+        style="font-size:.58rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%"
+        onclick="event.stopPropagation();ncOpenFromCache('${cacheKey}')"
+        title="${ev.start} ${ev.dept}${ev.branch}${ev.grade}（點擊編輯）">${ev.start.slice(0,5)} ${ev.dept}${ev.branch}</div>`;
     }).join('');
-    if(evs.length>3)chips+=`<div class="chip c-pend" style="font-size:.58rem">+${evs.length-3}</div>`;
+    // Cell click: if has events show picker, else open new
+    const cellClick = evs.length>0
+      ? `ncDayPicker('${ds}')`
+      : `openNcCalDay('${ds}')`;
     h+=`<div class="mc ${isToday?'tod':''}"
-      style="cursor:pointer;min-height:62px;position:relative"
-      onclick="openNcCalDay('${ds}')">
-      <div class="mdt">${d}</div>
-      ${chips}
-      <div style="position:absolute;bottom:3px;right:3px;font-size:.65rem;color:var(--blue);opacity:.3;line-height:1">＋</div>
+      style="cursor:pointer;min-height:62px;position:relative;overflow:hidden"
+      onclick="${cellClick}">
+      <div class="mdt" style="display:flex;justify-content:space-between;align-items:center">
+        <span>${d}</span>
+        <span style="font-size:.6rem;color:var(--blue);opacity:.5">＋</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px">${chips}</div>
     </div>`;
   }
   h+='</div>';
   el.innerHTML=h;
+}
+// Retrieve event from cache and open edit
+function ncOpenFromCache(key){
+  const ev=window[key];if(!ev)return;
+  openNcEditEvent(ev.src,ev.id,ev.ds,ev.start,ev.end,ev.dept,ev.branch,ev.grade);
+}
+// Day picker: show existing courses + add new option
+function ncDayPicker(ds){
+  const evs=getMyCourseEvents(cur.id,ds);
+  // Build picker UI in the modal
+  const typeL={rec:'常態',spot:'點狀',admin:'管理'};
+  let html=`<div style="margin-bottom:12px;font-size:.82rem;font-weight:500;color:var(--navy)">${ds} 的課程</div>`;
+  evs.forEach((ev,i)=>{
+    const cacheKey='ncev_'+ds.replace(/-/g,'')+'_'+i;
+    window[cacheKey]={src:ev.src,id:ev.id||'',ds,start:ev.start||'',end:ev.end||'',dept:ev.dept||'',branch:ev.branch||'',grade:ev.grade||''};
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:7px;cursor:pointer;transition:background .12s"
+      onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''"
+      onclick="closeOv('ov-nc-picker');ncOpenFromCache('${cacheKey}')">
+      <div>
+        <div style="font-weight:500;font-size:.84rem">${ev.dept} ${ev.branch} ${ev.grade}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${ev.start}–${ev.end} <span class="badge ${ev.src==='rec'?'brec':'bblue'}" style="margin-left:4px">${typeL[ev.src]||ev.src}</span></div>
+      </div>
+      <span style="color:var(--blue);font-size:.8rem">✏️</span>
+    </div>`;
+  });
+  html+=`<div style="display:flex;align-items:center;justify-content:center;padding:9px;border:1px dashed var(--bdr);border-radius:var(--r);cursor:pointer;color:var(--blue);font-size:.82rem;gap:5px"
+    onclick="closeOv('ov-nc-picker');openNcCalDay('${ds}')">
+    ➕ 新增一堂課
+  </div>`;
+  document.getElementById('nc-picker-body').innerHTML=html;
+  document.getElementById('nc-picker-title').textContent=ds;
+  openOv('ov-nc-picker');
 }
 
 function openNcCalDay(ds){
@@ -1822,7 +1860,7 @@ async function saveNcQuickAdd(){
   renderNcCal();
 }
 window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail;
-window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd;
+window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker;
 window.setupLeave=setupLeave; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
@@ -2226,6 +2264,20 @@ function isHoliday(ds, tid){
       <button class="btn bdel bsm" id="qa-del-btn" style="display:none" onclick="deleteNcEvent()">🗑 刪除</button>
       <button class="btn bn" id="qa-save-btn" onclick="saveNcQuickAdd()">新增</button>
     </div>
+  </div>
+</div>
+
+<!-- NC day picker modal -->
+<div class="ov" id="ov-nc-picker">
+  <div class="modal" style="max-width:360px">
+    <div class="mh">
+      <div>
+        <div class="mht">📅 選擇要編輯的課程</div>
+        <div id="nc-picker-title" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button class="mcls" onclick="closeOv('ov-nc-picker')">✕</button>
+    </div>
+    <div class="mb" id="nc-picker-body"></div>
   </div>
 </div>
 </body>
