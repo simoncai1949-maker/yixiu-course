@@ -673,7 +673,7 @@ const db = getFirestore(app);
 
 const ADMIN_PW = 'alex8888@';
 const ADMIN_ID = 'admin';
-let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[] };
+let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[], presence:[] };
 let cur = null;
 let unsubscribers = [];
 
@@ -714,7 +714,7 @@ function safeDelete(col, id, confirmMsg) {
 
 function setupListeners() {
   unsubscribers.forEach(u=>u()); unsubscribers=[];
-  ['teachers','courses','recurring','spots','requests','history','journals','holidays'].forEach(col=>{
+  ['teachers','courses','recurring','spots','requests','history','journals','holidays','presence'].forEach(col=>{
     const unsub=onSnapshot(collection(db,col), snap=>{
       S[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
       setSyncStatus('ok'); refreshPage();
@@ -739,7 +739,7 @@ function refreshPage() {
   else if(p==='history') renderHistory();
   else if(p==='journals') renderJournals();
   else if(p==='leave') populateLeaveRecurring();
-  fillSel(); popLoginSel();
+  fillSel(); popLoginSel(); renderPresence();
 }
 
 window.addEventListener('load', ()=>{
@@ -792,7 +792,11 @@ function doLogin(){
     const t=S.teachers.find(x=>x.id===tid);
     if(!t){document.getElementById('lg-err').textContent='找不到此師資';return;}
     if(!t.pw){cur={id:tid,name:t.name,role:'teacher'};enterApp();openOv('ov-firstpw');return;}
-    if(t.pw!==pw){document.getElementById('lg-err').textContent='密碼錯誤';return;}
+    if(t.pw!==pw){
+      document.getElementById('lg-err').textContent='密碼錯誤';
+      document.getElementById('lg-forgot').style.display='block';
+      return;
+    }
     cur={id:tid,name:t.name,role:'teacher'};if(remember)saveSession(cur);enterApp();
   }
 }
@@ -816,10 +820,45 @@ function enterApp(){
 }
 function doLogout(){cur=null;clearSession();document.getElementById('app').classList.remove('show');document.getElementById('login-screen').classList.add('show');document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.pg').forEach(x=>x.style.display='none');document.getElementById('lg-pw').value='';popLoginSel();document.querySelectorAll('.mob-nav').forEach(x=>x.classList.remove('mob-active'));}
 async function doFirstPw(){const pw=document.getElementById('fp-pw').value,pw2=document.getElementById('fp-pw2').value,err=document.getElementById('fp-err');err.textContent='';if(!pw){err.textContent='請輸入密碼';return;}if(pw!==pw2){err.textContent='兩次輸入不符';return;}await fsUpdate('teachers',cur.id,{pw});closeOv('ov-firstpw');toast('✅ 密碼設定完成',true);}
+async function forgotPw(){
+  const tid=document.getElementById('lg-sel').value;
+  if(!tid){toast('請先選擇姓名');return;}
+  const t=S.teachers.find(x=>x.id===tid);
+  if(!t){toast('找不到此師資');return;}
+  if(!confirm('確定要將「'+t.name+'」的密碼還原為未設定？下次登入將重新設定密碼。'))return;
+  await fsUpdate('teachers',tid,{pw:''});
+  toast('✅ 密碼已還原，請重新登入設定新密碼',true);
+  document.getElementById('lg-forgot').style.display='none';
+}
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
 const TITLES={cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+function updatePresence(page){
+  if(!cur) return;
+  const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
+    schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',
+    review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+  fsAdd('presence',{id:cur.id, name:cur.name, page:pageNames[page]||page, at:new Date().toISOString()}).catch(()=>{});
+}
+function renderPresence(){
+  const el=document.getElementById('presence-list'); if(!el) return;
+  const now=Date.now();
+  const active=S.presence?.filter(p=>{
+    if(p.id===cur?.id) return false; // don't show self
+    const diff=now-new Date(p.at).getTime();
+    return diff < 5*60*1000; // active within 5 mins
+  })||[];
+  if(!active.length){el.innerHTML='<div style="font-size:.72rem;color:rgba(255,255,255,.3);padding:4px 16px">目前只有你在線</div>';return;}
+  el.innerHTML=active.map(p=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:5px 16px">
+      <div style="width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0"></div>
+      <div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.8)">${p.name}</div>
+        <div style="font-size:.6rem;color:rgba(255,255,255,.4)">${p.page||'—'}</div>
+      </div>
+    </div>`).join('');
+}
 function goPage(el){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.pg').forEach(x=>x.style.display='none');
@@ -828,6 +867,7 @@ function goPage(el){
   document.getElementById('pg-'+p).style.display='block';
   document.getElementById('pg-title').textContent=TITLES[p]||'';
   fillSel();
+  updatePresence(p);
   if(p==='cal')renderCal();
   if(p==='mycourses')renderMyCourses();
   if(p==='newcourse'){renderRecList();renderSpotList();populateCopyFrom();}
@@ -1076,8 +1116,23 @@ function renderMyCourses(){
     const hasJournal=S.journals?.some(j=>j.key===jrnKey);
     const editBtn=(c.src==='spot'&&c.id)?`<button class="btn bg bxs" onclick="openEditSpot('${c.id}')">✏️</button>`:(c.src==='rec'&&c.id)?`<button class="btn bg bxs" onclick="openEditRecModal('${c.id}')">✏️</button>`:'';
     const jrnBtn=c.id?`<button class="btn ${hasJournal?'bok':'bg'} bxs" onclick="openMyCourseDetail('${c.src}','${c.id||''}','${c.date}','${c.start}')" title="${hasJournal?'已有日誌':'寫日誌'}">${hasJournal?'📝':'📄'}</button>`:'';
-    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}</td></tr>`;
+    // Quick cancel button - only for rec courses with a future date
+    const isFuture=c.date>=new Date().toISOString().slice(0,10);
+    const cancelBtn=(c.src==='rec'&&c.id&&isFuture)?`<button class="btn bdel bxs" onclick="quickCancelCourse('${c.id}','${c.date}','${c.start}')" title="申請停課">🚫</button>`:'';
+    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}${cancelBtn}</td></tr>`;
   }).join('')+'</tbody></table>';
+}
+async function quickCancelCourse(recId, date, start){
+  const r=S.recurring.find(x=>x.id===recId); if(!r)return;
+  if(!confirm('確定申請停課？\n'+date+' '+start+' '+r.dept+r.branch+r.grade))return;
+  await fsAdd('requests',{
+    tid:cur.id, type:'cancel',
+    note:'快速停課申請',
+    sessions:[{date,start,end:r.end,dept:r.dept,branch:r.branch,grade:r.grade}],
+    status:'pending', takers:{}, at:new Date().toISOString(), recId
+  });
+  await logHistory('request','申請停課：'+r.dept+r.branch+r.grade+' '+date, cur.id);
+  toast('✅ 停課申請已送出，等待管理員審核',true);
 }
 function openMyCourseDetail(src,id,date,start){
   // Show detail modal with journal entry option
@@ -1229,7 +1284,16 @@ async function submitLeave(){
   const tid=isAdm()?document.getElementById('lv-t').value:cur.id;if(!tid){toast('請選擇師資');return;}
   const blocks=document.querySelectorAll('.sessb');if(!blocks.length){toast('請新增至少一個堂次');return;}
   const sessions=[];
-  for(const b of blocks){const date=b.querySelector('.sd').value,start=b.querySelector('.ss').value,end=b.querySelector('.se').value,dept=b.querySelector('.sdept').value.trim(),branch=b.querySelector('.sbranch').value.trim(),grade=b.querySelector('.sgrade').value.trim();if(!date||!dept||!branch||!grade){toast('請完整填寫每個堂次');return;}sessions.push({date,start,end,dept,branch,grade});}
+  for(const b of blocks){
+    const date=b.querySelector('.sd')?.value||'';
+    const start=b.querySelector('.ss')?.value||'';
+    const end=b.querySelector('.se')?.value||'';
+    const dept=b.querySelector('.sdept')?.value.trim()||'';
+    const branch=b.querySelector('.sbranch')?.value.trim()||'';
+    const grade=b.querySelector('.sgrade')?.value.trim()||'';
+    if(!date){toast('請填寫堂次日期');return;}
+    if(!dept||!branch||!grade){toast('請填寫班部、分校、年段');return;}
+    sessions.push({date,start,end,dept,branch,grade});}
   await fsAdd('requests',{tid,type:document.getElementById('lv-type').value,note:document.getElementById('lv-note').value.trim(),sessions,status:'pending',takers:{},at:new Date().toISOString()});
   toast('✅ 申請已送出',true);clearLeave();
 }
@@ -1649,7 +1713,8 @@ const _n=new Date().toISOString();
 
 // EXPOSE ALL TO WINDOW
 window.switchRole=switchRole; window.doLogin=doLogin; window.doLogout=doLogout;
-window.doFirstPw=doFirstPw; window.doChangePw=doChangePw;
+window.updatePresence=updatePresence; window.renderPresence=renderPresence;
+window.doFirstPw=doFirstPw; window.doChangePw=doChangePw; window.forgotPw=forgotPw;
 window.goPage=goPage; window.fillSel=fillSel;
 window.renderTeachers=renderTeachers; window.openAddTeacher=openAddTeacher; window.doAddTeacher=doAddTeacher;
 window.openEditTeacher=openEditTeacher; window.saveEditTeacher=saveEditTeacher;
@@ -1754,8 +1819,9 @@ function openNcCalDay(ds){
   ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
   document.getElementById('qa-isrec').checked=false;
   document.getElementById('qa-from-row').style.display='none';
-  document.getElementById('qa-from').value=ds;
-  document.getElementById('qa-modal-title').textContent='➕ 新增課程';
+  document.getElementById('qa-from').value=ds;  // pre-fill from date for convenience
+  document.getElementById('qa-to').value='';
+  document.getElementById('qa-modal-title').textContent='➕ 新增課程（'+ds+'）';
   document.getElementById('qa-save-btn').textContent='新增';
   document.getElementById('qa-save-btn').onclick=saveNcQuickAdd;
   document.getElementById('qa-del-btn').style.display='none';
@@ -1859,7 +1925,7 @@ async function saveNcQuickAdd(){
   closeOv('ov-nc-quick-add');
   renderNcCal();
 }
-window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail;
+window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail; window.quickCancelCourse=quickCancelCourse;
 window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker;
 window.setupLeave=setupLeave; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
