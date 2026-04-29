@@ -1738,7 +1738,10 @@ function ncCalStep(d){ncCalM+=d;if(ncCalM<0){ncCalM=11;ncCalY--;}if(ncCalM>11){n
 function renderNcCal(){
   const el=document.getElementById('nc-cal-body');if(!el)return;
   const lbl=document.getElementById('nc-cal-lbl');
-  if(lbl)lbl.textContent=ncCalY+'年'+(ncCalM+1)+'月';
+  if(lbl){
+    const clipHint=_ncClipboard?` ｜ 📋 已複製「${_ncClipboard.dept}${_ncClipboard.branch}」，點日期貼上`:'';
+    lbl.textContent=ncCalY+'年'+(ncCalM+1)+'月'+clipHint;
+  }
   const first=new Date(ncCalY,ncCalM,1).getDay();
   const days=new Date(ncCalY,ncCalM+1,0).getDate();
   const DZ2=['日','一','二','三','四','五','六'];
@@ -1760,10 +1763,8 @@ function renderNcCal(){
         onclick="event.stopPropagation();ncOpenFromCache('${cacheKey}')"
         title="${ev.start} ${ev.dept}${ev.branch}${ev.grade}（點擊編輯）">${ev.start.slice(0,5)} ${ev.dept}${ev.branch}</div>`;
     }).join('');
-    // Cell click: if has events show picker, else open new
-    const cellClick = evs.length>0
-      ? `ncDayPicker('${ds}')`
-      : `openNcCalDay('${ds}')`;
+    // Cell click: if clipboard has data show paste option, if has events show picker, else open new
+    const cellClick = `ncCellClick('${ds}')`;
     h+=`<div class="mc ${isToday?'tod':''}"
       style="cursor:pointer;min-height:62px;position:relative;overflow:hidden"
       onclick="${cellClick}">
@@ -1783,6 +1784,47 @@ function ncOpenFromCache(key){
   openNcEditEvent(ev.src,ev.id,ev.ds,ev.start,ev.end,ev.dept,ev.branch,ev.grade);
 }
 // Day picker: show existing courses + add new option
+// ── COPY / PASTE ──
+let _ncClipboard = null; // stores copied course data
+
+function ncCopyCourse(cacheKey){
+  const ev = window[cacheKey];
+  if(!ev) return;
+  // Find fee data
+  let obj = null;
+  if(ev.src==='rec') obj = S.recurring.find(x=>x.id===ev.id);
+  else if(ev.src==='spot') obj = S.spots.find(x=>x.id===ev.id);
+  else if(ev.src==='admin') obj = S.courses.find(x=>x.id===ev.id);
+  _ncClipboard = {
+    dept: ev.dept, branch: ev.branch, grade: ev.grade,
+    start: ev.start, end: ev.end,
+    fee: obj?.fee||0, ds: obj?.ds||0, lec: obj?.lec||0
+  };
+  toast('✅ 已複製「'+ev.dept+ev.branch+ev.grade+'」，點其他日期貼上', true);
+  closeOv('ov-nc-picker');
+  // Re-render cal to show paste hint
+  renderNcCal();
+}
+
+async function ncPasteCourse(ds){
+  if(!_ncClipboard){ toast('尚未複製任何課程'); return; }
+  const c = _ncClipboard;
+  await fsAdd('spots',{
+    tid: cur.id, date: ds,
+    start: c.start, end: c.end,
+    dept: c.dept, branch: c.branch, grade: c.grade,
+    fee: c.fee, ds: c.ds, lec: c.lec
+  });
+  toast('✅ 已貼上「'+c.dept+c.branch+c.grade+'」到 '+ds, true);
+  renderNcCal();
+}
+
+function ncClearClipboard(){
+  _ncClipboard = null;
+  renderNcCal();
+  toast('已清除複製');
+}
+
 function ncDayPicker(ds){
   const evs=getMyCourseEvents(cur.id,ds);
   // Build picker UI in the modal
@@ -1791,14 +1833,15 @@ function ncDayPicker(ds){
   evs.forEach((ev,i)=>{
     const cacheKey='ncev_'+ds.replace(/-/g,'')+'_'+i;
     window[cacheKey]={src:ev.src,id:ev.id||'',ds,start:ev.start||'',end:ev.end||'',dept:ev.dept||'',branch:ev.branch||'',grade:ev.grade||''};
-    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:7px;cursor:pointer;transition:background .12s"
-      onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''"
-      onclick="closeOv('ov-nc-picker');ncOpenFromCache('${cacheKey}')">
-      <div>
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:7px">
+      <div style="flex:1;cursor:pointer" onclick="closeOv('ov-nc-picker');ncOpenFromCache('${cacheKey}')">
         <div style="font-weight:500;font-size:.84rem">${ev.dept} ${ev.branch} ${ev.grade}</div>
         <div style="font-size:.72rem;color:var(--muted)">${ev.start}–${ev.end} <span class="badge ${ev.src==='rec'?'brec':'bblue'}" style="margin-left:4px">${typeL[ev.src]||ev.src}</span></div>
       </div>
-      <span style="color:var(--blue);font-size:.8rem">✏️</span>
+      <div style="display:flex;gap:5px;margin-left:8px">
+        <button class="btn bg bxs" onclick="ncCopyCourse('${cacheKey}')" title="複製這堂課">📋</button>
+        <button class="btn bg bxs" onclick="closeOv('ov-nc-picker');ncOpenFromCache('${cacheKey}')" title="編輯">✏️</button>
+      </div>
     </div>`;
   });
   html+=`<div style="display:flex;align-items:center;justify-content:center;padding:9px;border:1px dashed var(--bdr);border-radius:var(--r);cursor:pointer;color:var(--blue);font-size:.82rem;gap:5px"
@@ -1812,35 +1855,40 @@ function ncDayPicker(ds){
 
 function openNcCalDay(ds){
   // Click on empty space = new event
-  document.getElementById('qa-date').value=ds;
-  document.getElementById('qa-start').value='08:00';
-  document.getElementById('qa-end').value='09:00';
-  ['qa-dept','qa-branch','qa-grade'].forEach(id=>document.getElementById(id).value='');
-  ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
-  document.getElementById('qa-isrec').checked=false;
-  document.getElementById('qa-from-row').style.display='none';
-  document.getElementById('qa-from').value=ds;  // pre-fill from date for convenience
-  document.getElementById('qa-to').value='';
-  document.getElementById('qa-modal-title').textContent='➕ 新增課程（'+ds+'）';
-  document.getElementById('qa-save-btn').textContent='新增';
-  document.getElementById('qa-save-btn').onclick=saveNcQuickAdd;
-  document.getElementById('qa-del-btn').style.display='none';
-  window._ncEditId=null; window._ncEditSrc=null;
   openOv('ov-nc-quick-add');
+  // Set values AFTER modal opens to ensure they stick
+  setTimeout(()=>{
+    document.getElementById('qa-date').value=ds;
+    document.getElementById('qa-start').value='08:00';
+    document.getElementById('qa-end').value='09:00';
+    ['qa-dept','qa-branch','qa-grade'].forEach(id=>document.getElementById(id).value='');
+    ['qa-fee','qa-ds','qa-lec'].forEach(id=>document.getElementById(id).value='0');
+    document.getElementById('qa-isrec').checked=false;
+    document.getElementById('qa-from-row').style.display='none';
+    document.getElementById('qa-from').value=ds;
+    document.getElementById('qa-to').value='';
+    document.getElementById('qa-modal-title').textContent='➕ 新增課程（'+ds+'）';
+    document.getElementById('qa-save-btn').textContent='新增';
+    document.getElementById('qa-save-btn').onclick=saveNcQuickAdd;
+    document.getElementById('qa-del-btn').style.display='none';
+    window._ncEditId=null; window._ncEditSrc=null;
+  }, 50);
 }
 function openNcEditEvent(src,id,date,start,end,dept,branch,grade){
   window._ncEditId=id; window._ncEditSrc=src;
+  // Load fee data from correct collection
+  let obj=null;
+  if(src==='rec') obj=S.recurring.find(x=>x.id===id);
+  else if(src==='spot') obj=S.spots.find(x=>x.id===id);
+  else if(src==='admin') obj=S.courses.find(x=>x.id===id);
+  openOv('ov-nc-quick-add');
+  setTimeout(()=>{
   document.getElementById('qa-date').value=date;
   document.getElementById('qa-start').value=start;
   document.getElementById('qa-end').value=end;
   document.getElementById('qa-dept').value=dept;
   document.getElementById('qa-branch').value=branch;
   document.getElementById('qa-grade').value=grade;
-  // Load fee data from correct collection
-  let obj=null;
-  if(src==='rec') obj=S.recurring.find(x=>x.id===id);
-  else if(src==='spot') obj=S.spots.find(x=>x.id===id);
-  else if(src==='admin') obj=S.courses.find(x=>x.id===id);
   if(obj){
     document.getElementById('qa-fee').value=obj.fee||0;
     document.getElementById('qa-ds').value=obj.ds||0;
@@ -1861,7 +1909,7 @@ function openNcEditEvent(src,id,date,start,end,dept,branch,grade){
   document.getElementById('qa-save-btn').onclick=saveNcEditEvent;
   document.getElementById('qa-del-btn').style.display='inline-flex';
   document.getElementById('qa-del-btn').onclick=deleteNcEvent;
-  openOv('ov-nc-quick-add');
+  }, 50);
 }
 async function saveNcEditEvent(){
   const src=window._ncEditSrc, id=window._ncEditId;
@@ -1926,7 +1974,41 @@ async function saveNcQuickAdd(){
   renderNcCal();
 }
 window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail; window.quickCancelCourse=quickCancelCourse;
-window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker;
+function ncCellClick(ds){
+  if(_ncClipboard){
+    // Show paste menu
+    const c=_ncClipboard;
+    const html=`
+      <div style="margin-bottom:12px;font-size:.82rem;font-weight:500;color:var(--navy)">${ds}</div>
+      <div style="padding:10px 12px;border:1px solid var(--blue);border-radius:var(--r);margin-bottom:8px;background:rgba(37,99,235,.04)">
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">剪貼簿</div>
+        <div style="font-weight:500">${c.dept} ${c.branch} ${c.grade}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${c.start}–${c.end}</div>
+      </div>
+      <button class="btn bn" style="width:100%;margin-bottom:8px" onclick="closeOv('ov-nc-picker');ncPasteCourse('${ds}')">📋 貼上到這天</button>
+      <button class="btn bg" style="width:100%;margin-bottom:8px" onclick="closeOv('ov-nc-picker');ncClearClipboard()">✕ 清除複製</button>
+      <hr style="margin:8px 0">`;
+    const evs=getMyCourseEvents(cur.id,ds);
+    const typeL={rec:'常態',spot:'點狀',admin:'管理'};
+    let evHtml=evs.length?evs.map((ev,i)=>{
+      const cacheKey='ncev_'+ds.replace(/-/g,'')+'_'+i;
+      window[cacheKey]={src:ev.src,id:ev.id||'',ds,start:ev.start||'',end:ev.end||'',dept:ev.dept||'',branch:ev.branch||'',grade:ev.grade||''};
+      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:6px">
+        <div style="flex:1;font-size:.82rem">${ev.dept} ${ev.branch} ${ev.grade} <span style="color:var(--muted);font-size:.7rem">${ev.start}</span></div>
+        <button class="btn bg bxs" onclick="ncCopyCourse('${cacheKey}')">📋</button>
+      </div>`;
+    }).join(''):'';
+    evHtml+=`<div style="text-align:center;padding:8px;border:1px dashed var(--bdr);border-radius:var(--r);cursor:pointer;color:var(--blue);font-size:.8rem" onclick="closeOv('ov-nc-picker');openNcCalDay('${ds}')">➕ 新增課程</div>`;
+    document.getElementById('nc-picker-body').innerHTML=html+evHtml;
+    document.getElementById('nc-picker-title').textContent=ds;
+    openOv('ov-nc-picker');
+  } else if(getMyCourseEvents(cur.id,ds).length>0){
+    ncDayPicker(ds);
+  } else {
+    openNcCalDay(ds);
+  }
+}
+window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker; window.ncCellClick=ncCellClick; window.ncCopyCourse=ncCopyCourse; window.ncPasteCourse=ncPasteCourse; window.ncClearClipboard=ncClearClipboard;
 window.setupLeave=setupLeave; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
