@@ -587,8 +587,28 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
 
     <div id="pg-exportsch" class="pg" style="display:none">
+      <!-- 快速匯出 -->
       <div class="card">
-        <div class="ch"><div class="ct"><div class="dot"></div>匯出課表（Excel）</div></div>
+        <div class="ch"><div class="ct"><div class="dot"></div>快速匯出</div></div>
+        <div class="cb">
+          <div style="margin-bottom:6px;font-size:.77rem;font-weight:500;color:var(--navy)">📋 列表式（可篩選排序）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <button class="btn bn" onclick="quickExportSch('month')">📥 本月</button>
+            <button class="btn bg" onclick="quickExportSch('lastmonth')">📥 上個月</button>
+            <button class="btn bg" onclick="quickExportSch('week')">📥 本週</button>
+          </div>
+          <div style="margin-bottom:6px;font-size:.77rem;font-weight:500;color:var(--navy)">📅 行事曆式（師資×日期總覽）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="btn bn" onclick="quickExportCal('month')">📅 本月</button>
+            <button class="btn bg" onclick="quickExportCal('lastmonth')">📅 上個月</button>
+            <button class="btn bg" onclick="quickExportCal('week')">📅 本週</button>
+          </div>
+          <div class="notice" style="margin-top:4px">行事曆式：縱軸師資、橫軸日期，一張 Excel 看全部課程。</div>
+        </div>
+      </div>
+      <!-- 自訂匯出 -->
+      <div class="card">
+        <div class="ch"><div class="ct"><div class="dot"></div>自訂匯出</div></div>
         <div class="cb">
           <div class="gr g2">
             <div class="fg"><label>師資</label><select id="exsch-t"><option value="">全部師資</option></select></div>
@@ -605,8 +625,9 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
             <div class="fg"><label>開始日期</label><input type="date" id="exsch-from" /></div>
             <div class="fg"><label>結束日期</label><input type="date" id="exsch-to" /></div>
           </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px">
-            <button class="btn bn" onclick="doExportSch()">📥 匯出 Excel</button>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button class="btn bg" onclick="doExportCal()">📅 行事曆式</button>
+            <button class="btn bn" onclick="doExportSch()">📥 列表式</button>
           </div>
         </div>
       </div>
@@ -1856,9 +1877,22 @@ function ncCalStep(d){ncCalM+=d;if(ncCalM<0){ncCalM=11;ncCalY--;}if(ncCalM>11){n
 function renderNcCal(){
   const el=document.getElementById('nc-cal-body');if(!el)return;
   const lbl=document.getElementById('nc-cal-lbl');
-  if(lbl){
-    const clipHint=_ncClipboard?` ｜ 📋 已複製「${_ncClipboard.dept}${_ncClipboard.branch}」，點日期貼上`:'';
-    lbl.textContent=ncCalY+'年'+(ncCalM+1)+'月'+clipHint;
+  if(lbl) lbl.textContent=ncCalY+'年'+(ncCalM+1)+'月';
+  // Show/hide clipboard banner
+  let banner=document.getElementById('nc-clip-banner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='nc-clip-banner';
+    banner.style.cssText='display:none;padding:6px 12px;background:rgba(37,99,235,.1);border:1px solid var(--blue);border-radius:6px;font-size:.76rem;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:8px';
+    banner.innerHTML='<span id="nc-clip-text"></span><button onclick="ncClearClipboard()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:.8rem;margin-left:auto">✕ 清除</button>';
+    const calBody=document.getElementById('nc-cal-body');
+    if(calBody&&calBody.parentNode) calBody.parentNode.insertBefore(banner,calBody);
+  }
+  if(_ncClipboard){
+    banner.style.display='flex';
+    document.getElementById('nc-clip-text').textContent='📋 已複製「'+_ncClipboard.dept+_ncClipboard.branch+_ncClipboard.grade+'」'+_ncClipboard.start+'–'+_ncClipboard.end+'　點任一天貼上';
+  } else {
+    banner.style.display='none';
   }
   const first=new Date(ncCalY,ncCalM,1).getDay();
   const days=new Date(ncCalY,ncCalM+1,0).getDate();
@@ -1881,12 +1915,13 @@ function renderNcCal(){
         onclick="event.stopPropagation();ncOpenFromCache('${cacheKey}')"
         title="${ev.start} ${ev.dept}${ev.branch}${ev.grade}（點擊編輯）">${ev.start.slice(0,5)} ${ev.dept}${ev.branch}</div>`;
     }).join('');
+    const hasCB=!!_ncClipboard;
     h+=`<div class="mc ${isToday?'tod':''}"
-      style="cursor:pointer;min-height:62px;position:relative;overflow:hidden"
+      style="cursor:pointer;min-height:62px;position:relative;overflow:hidden;${hasCB?'outline:2px dashed rgba(37,99,235,.25);outline-offset:-2px':''}"
       onclick="ncCellClick('${ds}')">
       <div class="mdt" style="display:flex;justify-content:space-between;align-items:center">
         <span>${d}</span>
-        <span style="font-size:.6rem;color:var(--blue);opacity:.5">＋</span>
+        <span style="font-size:.65rem;color:var(--blue);opacity:.6">${hasCB?'📋':'＋'}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px">${chips}</div>
     </div>`;
@@ -2124,7 +2159,13 @@ function ncCellClick(ds){
     openNcCalDay(ds);
   }
 }
-window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker; window.ncCellClick=ncCellClick; window.ncCopyCourse=ncCopyCourse; window.ncPasteCourse=ncPasteCourse; window.ncClearClipboard=ncClearClipboard;
+function toggleRecCheck(){
+  const cb=document.getElementById('qa-isrec');
+  if(!cb)return;
+  cb.checked=!cb.checked;
+  document.getElementById('qa-from-row').style.display=cb.checked?'grid':'none';
+}
+window.ncCalStep=ncCalStep; window.toggleRecCheck=toggleRecCheck; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker; window.ncCellClick=ncCellClick; window.ncCopyCourse=ncCopyCourse; window.ncPasteCourse=ncPasteCourse; window.ncClearClipboard=ncClearClipboard;
 window.setupLeave=setupLeave; window.leaveTab=leaveTab; window.saveMyHoliday=saveMyHoliday; window.renderMyHolidays=renderMyHolidays; window.initMyHoliday=initMyHoliday; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
@@ -2237,6 +2278,112 @@ function quickExportSch(range){
 }
 window.doExportSch=doExportSch;
 window.quickExportSch=quickExportSch;
+
+// ── Calendar-style Excel Export ──
+function quickExportCal(range){
+  const now=new Date();
+  let from, to;
+  if(range==='month'){
+    const y=now.getFullYear(),m=now.getMonth();
+    from=new Date(y,m,1).toISOString().slice(0,10);
+    to=new Date(y,m+1,0).toISOString().slice(0,10);
+  } else if(range==='lastmonth'){
+    const y=now.getFullYear(),m=now.getMonth()-1;
+    from=new Date(y,m,1).toISOString().slice(0,10);
+    to=new Date(y,m+1,0).toISOString().slice(0,10);
+  } else if(range==='week'){
+    const day=now.getDay(),diff=day===0?-6:1-day;
+    const mon=new Date(now);mon.setDate(now.getDate()+diff);
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    from=mon.toISOString().slice(0,10);
+    to=sun.toISOString().slice(0,10);
+  }
+  document.getElementById('exsch-from').value=from;
+  document.getElementById('exsch-to').value=to;
+  document.getElementById('exsch-t').value='';
+  document.getElementById('exsch-type').value='all';
+  doExportCal(from, to, '', 'all');
+}
+
+async function doExportCal(fromOverride,toOverride,tidOverride,typeOverride){
+  if(!isAdm()){toast('僅管理員可使用');return;}
+  const tid=tidOverride!==undefined?tidOverride:document.getElementById('exsch-t').value;
+  const type=typeOverride!==undefined?typeOverride:document.getElementById('exsch-type').value;
+  const from=fromOverride||document.getElementById('exsch-from').value;
+  const to=toOverride||document.getElementById('exsch-to').value;
+  if(!from||!to){toast('請選擇開始和結束日期');return;}
+  if(from>to){toast('開始日期不能晚於結束日期');return;}
+  const fromDt=new Date(from),toDt=new Date(to);
+  const firstMon=new Date(fromDt);
+  const dow=firstMon.getDay();
+  firstMon.setDate(firstMon.getDate()-(dow===0?6:dow-1));
+  const weeks=[];
+  let wStart=new Date(firstMon);
+  while(wStart<=toDt){
+    const days=[];
+    for(let i=0;i<7;i++){const d=new Date(wStart);d.setDate(wStart.getDate()+i);days.push(d.toISOString().slice(0,10));}
+    weeks.push(days);
+    wStart.setDate(wStart.getDate()+7);
+  }
+  const teachers=tid?[S.teachers.find(t=>t.id===tid)].filter(Boolean):S.teachers;
+  const DW=['日','一','二','三','四','五','六'];
+  const SLOTS=[
+    {label:'上午 08-12',from:'08:00',to:'12:59'},
+    {label:'下午 13-18',from:'13:00',to:'18:59'},
+    {label:'晚上 19-22',from:'19:00',to:'22:59'}
+  ];
+  function getCourses(ds){
+    const wd=new Date(ds).getDay(),result=[];
+    teachers.forEach(t=>{
+      const tid2=t.id;
+      if(type==='all'||type==='admin') S.courses.filter(c=>c.tid===tid2&&c.date===ds).forEach(c=>result.push({name:t.name,start:c.start,end:c.end,label:c.dept+c.branch+c.grade}));
+      if(type==='all'||type==='spot') S.spots.filter(s=>s.tid===tid2&&s.date===ds).forEach(s=>result.push({name:t.name,start:s.start,end:s.end,label:s.dept+s.branch+s.grade}));
+      if(type==='all'||type==='rec') S.recurring.filter(r=>{
+        if(r.tid!==tid2||r.wd!==wd)return false;
+        if(r.from&&ds<r.from)return false;
+        if(r.to&&ds>r.to)return false;
+        const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid2&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
+        return !cancelled&&!isHoliday(ds,tid2,r.id);
+      }).forEach(r=>result.push({name:t.name,start:r.start,end:r.end,label:r.dept+r.branch+r.grade}));
+    });
+    return result;
+  }
+  const wb=XLSX.utils.book_new();
+  weeks.forEach((days,wi)=>{
+    const weekLabel=days[0].slice(5).replace('-','/')+'~'+days[6].slice(5).replace('-','/');
+    const wsData=[];
+    wsData.push(['易學國文 週課表 '+weekLabel,'','','','','','','']);
+    wsData.push([]);
+    const hdr=['時段'];
+    days.forEach(ds=>{const dt=new Date(ds);hdr.push(ds.slice(5).replace('-','/')+' ('+DW[dt.getDay()]+')')});
+    wsData.push(hdr);
+    SLOTS.forEach(slot=>{
+      const row=[slot.label];
+      days.forEach(ds=>{
+        const cs=getCourses(ds).filter(c=>c.start>=slot.from&&c.start<=slot.to);
+        row.push(cs.length?cs.map(c=>c.name+' '+c.start+' '+c.label).join(' / '):'');
+      });
+      wsData.push(row);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols']=[{wch:12},...days.map(()=>({wch:22}))];
+    ws['!rows']=[{hpt:18},{hpt:6},{hpt:24},...SLOTS.map(()=>({hpt:70}))];
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:7}}];
+    const rng=XLSX.utils.decode_range(ws['!ref']||'A1');
+    for(let R=0;R<=rng.e.r;R++) for(let C=0;C<=rng.e.c;C++){
+      const cell=XLSX.utils.encode_cell({r:R,c:C});
+      if(!ws[cell])ws[cell]={v:'',t:'s'};
+      const isTitleRow=R===0,isHeader=R===2,isSlotCol=R>=3&&C===0;
+      ws[cell].s={alignment:{wrapText:true,vertical:'top',horizontal:isHeader||isSlotCol?'center':'left'},font:{bold:isTitleRow||isHeader||isSlotCol}};
+    }
+    XLSX.utils.book_append_sheet(wb,ws,('第'+(wi+1)+'週 '+weekLabel).slice(0,31));
+  });
+  const fname=(tid?tn(tid):'全體')+'_行事曆課表_'+from+'_'+to+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  toast('✅ 行事曆課表已匯出（共'+weeks.length+'週）',true);
+}
+window.quickExportCal=quickExportCal;
+window.doExportCal=doExportCal;
 window.renderHistory=renderHistory; window.logHistory=logHistory;
 window.openCancelRec=openCancelRec; window.submitCancelRec=submitCancelRec;
 window.openEditEvent=openEditEvent; window.saveEditEvent=saveEditEvent; window.removeEventTaker=removeEventTaker;
