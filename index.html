@@ -586,6 +586,32 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       </div>
     </div>
 
+    <div id="pg-exportsch" class="pg" style="display:none">
+      <div class="card">
+        <div class="ch"><div class="ct"><div class="dot"></div>匯出課表（Excel）</div></div>
+        <div class="cb">
+          <div class="gr g2">
+            <div class="fg"><label>師資</label><select id="exsch-t"><option value="">全部師資</option></select></div>
+            <div class="fg"><label>課程類型</label>
+              <select id="exsch-type">
+                <option value="all">全部</option>
+                <option value="rec">常態課程</option>
+                <option value="spot">點狀課程</option>
+                <option value="admin">管理課程</option>
+              </select>
+            </div>
+          </div>
+          <div class="gr g2">
+            <div class="fg"><label>開始日期</label><input type="date" id="exsch-from" /></div>
+            <div class="fg"><label>結束日期</label><input type="date" id="exsch-to" /></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px">
+            <button class="btn bn" onclick="doExportSch()">📥 匯出 Excel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
     </div>
@@ -833,7 +859,7 @@ async function forgotPw(){
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+const TITLES={cal:'行事曆總覽',exportsch:'匯出課表',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function updatePresence(page){
   if(!cur) return;
   const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
@@ -877,6 +903,26 @@ function goPage(el){
   if(p==='sub')renderSub();
   if(p==='review')renderReview();
   if(p==='history'){document.getElementById('hist-month').value=new Date().toISOString().slice(0,7);renderHistory();}
+  if(p==='exportsch'){
+    if(!isAdm()){toast('僅管理員可使用');return;}
+    const sel=document.getElementById('exsch-t');
+    if(sel){sel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
+    // Default to current month
+    const now=new Date();
+    const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+    document.getElementById('exsch-from').value=y+'-'+m+'-01';
+    const lastDay=new Date(y,now.getMonth()+1,0).getDate();
+    document.getElementById('exsch-to').value=y+'-'+m+'-'+String(lastDay).padStart(2,'0');
+  }
+  if(p==='exportsch'){
+    if(!isAdm()){toast('僅管理員可使用');return;}
+    const exSel=document.getElementById('exsch-t');
+    if(exSel){exSel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
+    const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+    const ld=new Date(y,now.getMonth()+1,0).getDate();
+    document.getElementById('exsch-from').value=y+'-'+m+'-01';
+    document.getElementById('exsch-to').value=y+'-'+m+'-'+String(ld).padStart(2,'0');
+  }
   if(p==='holidays'){
     const sel=document.getElementById('hol-scope');
     if(sel){sel.innerHTML='<option value="all">全體師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
@@ -2012,7 +2058,113 @@ window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLea
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
 window.rvTab=rvTab; window.renderReview=renderReview; window.approve=approve; window.reject=reject; window.deleteRequest=deleteRequest;
 window.calStep=calStep; window.calToday=calToday; window.setView=setView; window.calDayNav=calDayNav; window.showDay=showDay;
+
+async function doExportSch(fromOverride, toOverride, tidOverride, typeOverride){
+  if(!isAdm()){toast('僅管理員可使用');return;}
+  const tid=tidOverride!==undefined?tidOverride:document.getElementById('exsch-t').value;
+  const type=typeOverride!==undefined?typeOverride:document.getElementById('exsch-type').value;
+  const from=fromOverride||document.getElementById('exsch-from').value;
+  const to=toOverride||document.getElementById('exsch-to').value;
+  if(!from||!to){toast('請選擇開始和結束日期');return;}
+  if(from>to){toast('開始日期不能晚於結束日期');return;}
+
+  // Collect all dates in range
+  const dates=[];
+  let cur2=new Date(from);
+  const toDate=new Date(to);
+  while(cur2<=toDate){
+    dates.push(cur2.toISOString().slice(0,10));
+    cur2.setDate(cur2.getDate()+1);
+  }
+
+  // Collect courses
+  let rows=[];
+  const teachers=tid?[S.teachers.find(t=>t.id===tid)].filter(Boolean):S.teachers;
+
+  dates.forEach(ds=>{
+    const wd=new Date(ds).getDay();
+    teachers.forEach(t=>{
+      const tid2=t.id;
+      // Admin courses
+      if(type==='all'||type==='admin'){
+        S.courses.filter(c=>c.tid===tid2&&c.date===ds).forEach(c=>{
+          rows.push([t.name,ds,c.dept,c.branch,c.grade,c.start+'–'+c.end,'管理',c.fee||0,c.ds||0,c.lec||0]);
+        });
+      }
+      // Spot courses
+      if(type==='all'||type==='spot'){
+        S.spots.filter(s=>s.tid===tid2&&s.date===ds).forEach(s=>{
+          rows.push([t.name,ds,s.dept,s.branch,s.grade,s.start+'–'+s.end,'點狀',s.fee||0,s.ds||0,s.lec||0]);
+        });
+      }
+      // Recurring courses
+      if(type==='all'||type==='rec'){
+        S.recurring.filter(r=>{
+          if(r.tid!==tid2||r.wd!==wd)return false;
+          if(r.from&&ds<r.from)return false;
+          if(r.to&&ds>r.to)return false;
+          const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid2&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
+          return !cancelled;
+        }).forEach(r=>{
+          rows.push([t.name,ds,r.dept,r.branch,r.grade,r.start+'–'+r.end,'常態',r.fee||0,r.ds||0,r.lec||0]);
+        });
+      }
+    });
+  });
+
+  if(!rows.length){toast('此區間無課程資料');return;}
+
+  // Sort by date then teacher
+  rows.sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+
+  // Build Excel
+  const header=[['師資','日期','班部','分校','年段','時間','類型','鐘點費','派師費','講義費']];
+  const wsData=[
+    ['易學國文師資團隊 — 課表匯出','','','','','','','','',''],
+    ['期間：'+from+' ～ '+to,'','','','','','','','',''],
+    [],
+    ...header,
+    ...rows
+  ];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:8},{wch:12},{wch:8},{wch:8},{wch:8},{wch:12},{wch:6},{wch:8},{wch:8},{wch:8}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}}];
+  ws['!autofilter']={ref:'A4:J4'};
+  XLSX.utils.book_append_sheet(wb,ws,'課表');
+  const fname=(tid?tn(tid):'全體')+'_課表_'+from+'_'+to+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  toast('✅ 已匯出 '+rows.length+' 筆，可在 Excel 篩選',true);
+}
 window.openExportModal=openExportModal; window.doExport=doExport;
+
+function quickExportSch(range){
+  const now=new Date();
+  let from, to;
+  if(range==='month'){
+    const y=now.getFullYear(),m=now.getMonth();
+    from=new Date(y,m,1).toISOString().slice(0,10);
+    to=new Date(y,m+1,0).toISOString().slice(0,10);
+  } else if(range==='lastmonth'){
+    const y=now.getFullYear(),m=now.getMonth()-1;
+    from=new Date(y,m,1).toISOString().slice(0,10);
+    to=new Date(y,m+1,0).toISOString().slice(0,10);
+  } else if(range==='week'){
+    const day=now.getDay(),diff=day===0?-6:1-day;
+    const mon=new Date(now);mon.setDate(now.getDate()+diff);
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    from=mon.toISOString().slice(0,10);
+    to=sun.toISOString().slice(0,10);
+  }
+  // Set form values and export
+  document.getElementById('exsch-from').value=from;
+  document.getElementById('exsch-to').value=to;
+  document.getElementById('exsch-t').value='';
+  document.getElementById('exsch-type').value='all';
+  doExportSch(from, to, '', 'all');
+}
+window.doExportSch=doExportSch;
+window.quickExportSch=quickExportSch;
 window.renderHistory=renderHistory; window.logHistory=logHistory;
 window.openCancelRec=openCancelRec; window.submitCancelRec=submitCancelRec;
 window.openEditEvent=openEditEvent; window.saveEditEvent=saveEditEvent; window.removeEventTaker=removeEventTaker;
@@ -2115,37 +2267,7 @@ function isHoliday(ds, tid){
 </div>
 
 <!-- QUICK ADD FROM CALENDAR -->
-<div class="ov" id="ov-quick-add">
-  <div class="modal">
-    <div class="mh"><div class="mht">➕ 從行事曆新增課程</div><button class="mcls" onclick="closeOv('ov-quick-add')">✕</button></div>
-    <div class="mb">
-      <div class="gr g2">
-        <div class="fg"><label>日期</label><input type="date" id="qa-date" /></div>
-        <div style="display:flex;gap:8px">
-          <div class="fg" style="flex:1"><label>開始</label><input type="time" id="qa-start" /></div>
-          <div class="fg" style="flex:1"><label>結束</label><input type="time" id="qa-end" /></div>
-        </div>
-      </div>
-      <div class="gr g3">
-        <div class="fg"><label>班部</label><input type="text" id="qa-dept" placeholder="文城" /></div>
-        <div class="fg"><label>分校</label><input type="text" id="qa-branch" placeholder="中平" /></div>
-        <div class="fg"><label>年段</label><input type="text" id="qa-grade" placeholder="國八" /></div>
-      </div>
-      <hr>
-      <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">鐘點費 / 抽成（僅本人與易學國文可見）</div>
-      <div class="gr g3">
-        <div class="fg"><label>鐘點費</label><input type="number" id="qa-fee" value="0" min="0" /></div>
-        <div class="fg"><label>派師費</label><input type="number" id="qa-ds" value="0" min="0" /></div>
-        <div class="fg"><label>講義費</label><input type="number" id="qa-lec" value="0" min="0" /></div>
-      </div>
-      <div class="ckr" onclick="document.getElementById('qa-isrec').click()">
-        <input type="checkbox" id="qa-isrec">
-        <label for="qa-isrec">設為常態課程（每週重複）</label>
-      </div>
-    </div>
-    <div class="mf"><button class="btn bg" onclick="closeOv('ov-quick-add')">取消</button><button class="btn bn" onclick="saveQuickAdd()">新增</button></div>
-  </div>
-</div>
+
 
 <!-- TEACHER JOURNAL -->
 <div class="ov" id="ov-journal">
@@ -2173,35 +2295,7 @@ function isHoliday(ds, tid){
 
 
 <!-- QUICK ADD MODAL -->
-<div class="ov" id="ov-quick-add">
-  <div class="modal">
-    <div class="mh"><div class="mht">➕ 行事曆快速新增課程</div><button class="mcls" onclick="closeOv('ov-quick-add')">✕</button></div>
-    <div class="mb">
-      <div class="fg" style="margin-bottom:10px"><label>複製自常態課程（選填）</label><select id="qa-copy"><option value="">不複製</option></select></div>
-      <div class="gr g2">
-        <div class="fg"><label>日期</label><input type="date" id="qa-date" /></div>
-        <div class="fg"></div>
-      </div>
-      <div class="gr g3">
-        <div class="fg"><label>班部</label><input type="text" id="qa-dept" placeholder="文城" /></div>
-        <div class="fg"><label>分校</label><input type="text" id="qa-branch" placeholder="中平" /></div>
-        <div class="fg"><label>年段</label><input type="text" id="qa-grade" placeholder="國八" /></div>
-      </div>
-      <div class="gr g2">
-        <div class="fg"><label>開始</label><input type="time" id="qa-start" value="08:00" /></div>
-        <div class="fg"><label>結束</label><input type="time" id="qa-end" value="09:00" /></div>
-      </div>
-      <hr>
-      <div style="font-size:.76rem;font-weight:500;color:var(--navy);margin-bottom:7px">費用（選填，僅本人與易學國文可見）</div>
-      <div class="gr g3">
-        <div class="fg"><label>鐘點費</label><input type="number" id="qa-fee" placeholder="0" min="0" /></div>
-        <div class="fg"><label>派師費</label><input type="number" id="qa-ds" placeholder="0" min="0" /></div>
-        <div class="fg"><label>講義費</label><input type="number" id="qa-lec" placeholder="0" min="0" /></div>
-      </div>
-    </div>
-    <div class="mf"><button class="btn bg" onclick="closeOv('ov-quick-add')">取消</button><button class="btn bn" onclick="saveQuickAdd()">新增</button></div>
-  </div>
-</div>
+
 
 <!-- JOURNAL MODAL -->
 <div class="ov" id="ov-journal">
