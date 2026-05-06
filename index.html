@@ -2436,7 +2436,7 @@ async function doExportCal(fromOverride,toOverride,tidOverride,typeOverride){
       const isTitleRow=R===0,isHeader=R===2,isSlotCol=R>=3&&C===0;
       ws[cell].s={alignment:{wrapText:true,vertical:'top',horizontal:isHeader||isSlotCol?'center':'left'},font:{bold:isTitleRow||isHeader||isSlotCol}};
     }
-    XLSX.utils.book_append_sheet(wb,ws,('第'+(wi+1)+'週 '+weekLabel).slice(0,31));
+    XLSX.utils.book_append_sheet(wb,ws,('W'+(wi+1)+' '+weekLabel.replace(/\//g,'-')).slice(0,31));
   });
   const fname=(tid?tn(tid):'全體')+'_行事曆課表_'+from+'_'+to+'.xlsx';
   XLSX.writeFile(wb,fname);
