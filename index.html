@@ -247,8 +247,9 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="teachers" onclick="goPage(this)"><span class="sb-ico">👤</span>師資管理</div>
     <div class="sb-item" data-p="review" onclick="goPage(this)"><span class="sb-ico">✅</span>審核申請</div>
     <div class="sb-item" data-p="history" onclick="goPage(this)"><span class="sb-ico">📜</span>歷史紀錄</div>
+    <div class="sb-item" data-p="exportsch" onclick="goPage(this)"><span class="sb-ico">📊</span>匯出課表</div>
     <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📝</span>教師日誌</div>
-    <div class="sb-item" data-p="holidays" onclick="goPage(this)"><span class="sb-ico">🏖️</span>假日設定</div>
+    
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-foot">
@@ -314,8 +315,8 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
           <div class="ct"><div class="dot"></div>我的課表</div>
           <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
             <div class="vtog">
-              <button class="vbtn on" id="mcv-list" onclick="setMcView('list')">列表</button>
-              <button class="vbtn" id="mcv-cal" onclick="setMcView('cal')">行事曆</button>
+              <button class="vbtn" id="mcv-list" onclick="setMcView('list')">列表</button>
+              <button class="vbtn on" id="mcv-cal" onclick="setMcView('cal')">行事曆</button>
             </div>
             <div class="vtog" id="mc-sort-tog">
               <button class="vbtn on" id="mc-sort-date" onclick="setMcSort('date')">依日期</button>
@@ -479,7 +480,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t" onchange="populateLeaveRecurring()"></select></div><div class="fg"><label>申請類型</label><select id="lv-type">
   <option value="cancel">停課（此堂課取消，不需代課）</option>
   <option value="leave">請假（需要安排代課）</option>
-  <option value="adjust">課程調動（同一老師換時間）</option>
 </select></div></div>
         <div class="fg" style="margin-bottom:10px"><label>備注（選填）</label><input type="text" id="lv-note" placeholder="說明"></div>
         <hr>
@@ -1134,7 +1134,7 @@ function ncTab(el,tab){
 }
 
 // MY COURSES
-let mcView='list',mcCalMode='day',mcCalOffset=0;
+let mcView='cal',mcCalMode='monthay',mcCalOffset=0;
 function setMcView(v){mcView=v;document.getElementById('mcv-list').classList.toggle('on',v==='list');document.getElementById('mcv-cal').classList.toggle('on',v==='cal');document.getElementById('mc-list-ctrl').style.display=v==='list'?'block':'none';document.getElementById('mc-cal-ctrl').style.display=v==='cal'?'flex':'none';renderMyCourses();}
 function setMcCalView(v){mcCalMode=v;mcCalOffset=0;['day','week','month2','year'].forEach(x=>document.getElementById('mcv-'+x)?.classList.toggle('on',x.replace('2','')+''===v));renderMyCourses();}
 function mcCalStep(d){mcCalOffset+=d;renderMyCourses();}
@@ -1252,6 +1252,55 @@ function renderMyCal(el,tid){
 }
 
 // LEAVE
+function leaveTab(el, tab){
+  document.querySelectorAll('#pg-leave .tab').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('lv-apply-panel').style.display = tab==='apply' ? 'block' : 'none';
+  document.getElementById('lv-holiday-panel').style.display = tab==='holiday' ? 'block' : 'none';
+  if(tab==='holiday') initMyHoliday();
+}
+function initMyHoliday(){
+  // Populate recurring select for this teacher
+  const sel = document.getElementById('my-hol-rec');
+  if(!sel) return;
+  const wl=['日','一','二','三','四','五','六'];
+  const recs = S.recurring.filter(r=>r.tid===cur.id);
+  sel.innerHTML = '<option value="all">我的所有常態課程</option>' +
+    recs.map(r=>`<option value="${r.id}">${wl[r.wd]} ${r.start}–${r.end} ${r.dept}${r.branch}${r.grade}</option>`).join('');
+  renderMyHolidays();
+}
+async function saveMyHoliday(){
+  const name = document.getElementById('my-hol-name').value.trim();
+  const from = document.getElementById('my-hol-from').value;
+  const to = document.getElementById('my-hol-to').value || from;
+  const recId = document.getElementById('my-hol-rec').value;
+  if(!name){ toast('請填寫說明'); return; }
+  if(!from){ toast('請選擇開始日期'); return; }
+  if(to < from){ toast('結束日期不能早於開始日期'); return; }
+  const scope = recId==='all' ? cur.id : recId; // tid or recId
+  await fsAdd('holidays',{
+    type: to===from?'day':'range',
+    name, from, to,
+    scope: cur.id, // always scope to this teacher
+    recId: recId==='all' ? null : recId,
+    at: new Date().toISOString()
+  });
+  await logHistory('course','停課設定：'+name+' ('+from+(to!==from?' ~ '+to:'')+')', cur.id);
+  ['my-hol-name','my-hol-from','my-hol-to'].forEach(id=>document.getElementById(id).value='');
+  toast('✅ 停課已設定，行事曆自動更新', true);
+  renderMyHolidays();
+}
+function renderMyHolidays(){
+  const el = document.getElementById('my-holidays-list'); if(!el) return;
+  const mine = (S.holidays||[]).filter(h=>h.scope===cur.id).sort((a,b)=>a.from.localeCompare(b.from));
+  if(!mine.length){ el.innerHTML='<div class="empty"><div class="ei">📅</div>尚無停課設定</div>'; return; }
+  el.innerHTML = '<table class="tbl"><thead><tr><th>說明</th><th>日期</th><th></th></tr></thead><tbody>' +
+    mine.map(h=>`<tr>
+      <td style="font-weight:500">${h.name}</td>
+      <td style="font-size:.75rem">${h.from}${h.to&&h.to!==h.from?' ～ '+h.to:''}</td>
+      <td><button class="btn bdel bxs" onclick="safeDelete('holidays','${h.id}','確定刪除此停課設定？')">刪</button></td>
+    </tr>`).join('') + '</tbody></table>';
+}
 function setupLeave(){fillSel();if(!isAdm()){const lvt=document.getElementById('lv-t');if(lvt)lvt.value=cur.id;}if(!document.querySelectorAll('.sessb').length)addSess();populateLeaveRecurring();}
 function populateLeaveRecurring(){
   const sel=document.getElementById('lv-rec-sel');if(!sel)return;
@@ -1360,7 +1409,19 @@ function openTake(rid,si){
   const r=S.requests.find(x=>x.id===rid),s=r.sessions[si];tId=rid;tSi=si;
   document.getElementById('take-chk').checked=false;
   const selRow=document.getElementById('take-name-row');
-  if(selRow){if(isAdm()){selRow.style.display='flex';fillSel();document.getElementById('take-sel').value='';}else{selRow.style.display='none';}}
+  if(selRow){
+    if(isAdm()){
+      selRow.style.display='flex';
+      const takeSel=document.getElementById('take-sel');
+      if(takeSel){
+        takeSel.innerHTML='<option value="">— 請選擇師資 —</option>'+
+          S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+        takeSel.value='';
+      }
+    } else {
+      selRow.style.display='none';
+    }
+  }
   document.getElementById('take-info').innerHTML=`<div class="ir"><span class="il">班級</span><span class="iv"><strong>${s.dept} ${s.branch} ${s.grade}</strong></span></div><div class="ir"><span class="il">時間</span><span class="iv">${s.date} ${s.start}–${s.end}</span></div><div class="ir"><span class="il">原師資</span><span class="iv" style="color:var(--blue)">${tn(r.tid)}</span></div>${!isAdm()?`<div class="notice" style="margin-top:8px;background:var(--gbg);border-left-color:var(--grn);color:var(--grn)">您將以「<strong>${cur.name}</strong>」的身份接課</div>`:''}`;
   openOv('ov-take');
 }
@@ -1422,6 +1483,7 @@ function getEventsForDate(ds){
     if(isHoliday(ds,r.tid))return; // skip on holidays
     const isCancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===r.tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
     if(isCancelled)return;
+    if(isHoliday(ds,r.tid,r.id))return;
     const freq=r.freq||'weekly';
     if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return;}
     if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return;
@@ -1430,7 +1492,17 @@ function getEventsForDate(ds){
     else events.push({type:'rec',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,srcId:r.id,srcCol:'recurring',r});
   });
   S.spots.forEach(s=>{if(s.date!==ds||!canSee(viewer,s.tid))return;if(isHoliday(ds,s.tid))return;events.push({type:'spot',label:`${s.dept} ${s.branch} ${s.grade}`,tid:s.tid,start:s.start,end:s.end,srcId:s.id,srcCol:'spots',s});});
-  S.requests.forEach(req=>{if(req.status==='rejected')return;req.sessions.forEach((s,si)=>{if(s.date!==ds||!canSee(viewer,req.tid))return;const tk=req.takers[si];if(tk)events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});else if(req.status==='approved')events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});});});
+  S.requests.forEach(req=>{
+    if(req.status==='rejected') return;
+    if(req.type==='cancel') return; // cancel requests remove courses, not add events
+    req.sessions.forEach((s,si)=>{
+      if(s.date!==ds||!canSee(viewer,req.tid)) return;
+      const tk=req.takers[si];
+      if(tk) events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});
+      else if(req.status==='approved') events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});
+      else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});
+    });
+  });
   // Sort: current user's events first, then by start time
   return events.sort((a,b)=>{
     const aOwn = cur && a.tid===cur.id ? 0 : 1;
@@ -2053,7 +2125,7 @@ function ncCellClick(ds){
   }
 }
 window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker; window.ncCellClick=ncCellClick; window.ncCopyCourse=ncCopyCourse; window.ncPasteCourse=ncPasteCourse; window.ncClearClipboard=ncClearClipboard;
-window.setupLeave=setupLeave; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
+window.setupLeave=setupLeave; window.leaveTab=leaveTab; window.saveMyHoliday=saveMyHoliday; window.renderMyHolidays=renderMyHolidays; window.initMyHoliday=initMyHoliday; window.addSess=addSess; window.addSessFromRec=addSessFromRec;
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
 window.rvTab=rvTab; window.renderReview=renderReview; window.approve=approve; window.reject=reject; window.deleteRequest=deleteRequest;
@@ -2234,10 +2306,15 @@ function renderHolidays(){
       <td><button class="btn bdel bxs" onclick="safeDelete('holidays','${h.id}','確定刪除「${h.name}」假日設定？')">刪</button></td>
     </tr>`).join('')+'</tbody></table>';
 }
-function isHoliday(ds, tid){
+function isHoliday(ds, tid, recId){
   if(!S.holidays||!S.holidays.length) return false;
   return S.holidays.some(h=>{
-    if(h.scope!=='all'&&h.scope!==tid) return false;
+    // Admin holidays: scope='all' or specific tid
+    if(h.scope==='all') return ds>=h.from && ds<=(h.to||h.from);
+    // Teacher's own holiday: scope=tid
+    if(h.scope!==tid) return false;
+    // If holiday has specific recId, only block that recurring course
+    if(h.recId && recId && h.recId!==recId) return false;
     return ds>=h.from && ds<=(h.to||h.from);
   });
 }
