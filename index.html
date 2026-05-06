@@ -19,6 +19,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--txt)
 #login-screen{position:fixed;inset:0;background:var(--navy);display:none;align-items:center;justify-content:center;z-index:9000;}
 #login-screen.show{display:flex;}
 .lg-box{background:var(--w);border-radius:14px;padding:34px 30px;width:350px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+@media(max-width:420px){
+  .lg-box{width:92vw;padding:24px 20px;}
+  #login-screen{align-items:flex-start;padding-top:40px;}
+  .lg-logo img{height:32px;}
+  .lrtab{font-size:.78rem;padding:6px 12px;}
+  #lg-sel,#lg-pw{font-size:1rem;padding:8px 10px;}
+}
 .lg-logo{text-align:center;margin-bottom:12px;}
 .lg-logo img{height:42px;object-fit:contain;}
 .lg-title{font-size:.77rem;text-align:center;color:var(--muted);letter-spacing:1px;margin-bottom:20px;line-height:1.7;}
@@ -260,7 +267,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/06　v32</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/06　v33</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -953,6 +960,8 @@ function goPage(el){
   document.getElementById('pg-title').textContent=TITLES[p]||'';
   fillSel();
   updatePresence(p);
+  // Mobile: show teacher filter on relevant pages
+  showMobTeacherBar(['schedule','cal'].includes(p));
   if(p==='cal')renderCal();
   if(p==='mycourses')renderMyCourses();
   if(p==='newcourse'){renderRecList();renderSpotList();populateCopyFrom();}
@@ -1206,7 +1215,19 @@ function renderMyCourses(){
   let rows=[];
   S.courses.filter(c=>c.tid===tid&&(!mv||c.date.startsWith(mv))).forEach(c=>rows.push({...c,src:'admin'}));
   S.spots.filter(c=>c.tid===tid&&(!mv||c.date.startsWith(mv))).forEach(c=>rows.push({...c,src:'spot'}));
-  if(mv){const[y,m]=mv.split('-').map(Number),days=new Date(y,m,0).getDate();for(let d=1;d<=days;d++){const ds=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'),wd=new Date(ds).getDay();S.recurring.filter(r=>r.tid===tid&&r.wd===wd&&(!r.from||ds>=r.from)&&(!r.to||ds<=r.to)).forEach(r=>rows.push({...r,date:ds,src:'rec'}));}}
+  if(mv){const[y,m]=mv.split('-').map(Number),days=new Date(y,m,0).getDate();for(let d=1;d<=days;d++){const ds=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'),wd=new Date(ds).getDay();S.recurring.filter(r=>{
+        if(r.tid!==tid||r.wd!==wd)return false;
+        if(r.from&&ds<r.from)return false;
+        if(r.to&&ds>r.to)return false;
+        const freq=r.freq||'weekly';
+        if(freq==='biweekly'&&r.from){
+          const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);
+          if(Math.floor(diff/7)%2!==0)return false;
+        }
+        if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;
+        const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
+        return !cancelled&&!isHoliday(ds,tid,r.id);
+      }).forEach(r=>rows.push({...r,date:ds,src:'rec'}));}}
   // Sort
   if(mcSortBy==='date'){rows.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));}
   else{rows.sort((a,b)=>(a.dept+a.branch).localeCompare(b.dept+b.branch)||a.date.localeCompare(b.date));}
@@ -2218,6 +2239,7 @@ async function doExportSch(fromOverride, toOverride, tidOverride, typeOverride){
   const to=toOverride||(document.getElementById('exsch-to')?.value||'');
   if(!from||!to){toast('請選擇開始和結束日期');return;}
   if(from>to){toast('開始日期不能晚於結束日期');return;}
+  try{
 
   // Collect all dates in range
   const dates=[];
@@ -2286,6 +2308,7 @@ async function doExportSch(fromOverride, toOverride, tidOverride, typeOverride){
   const fname=(tid?tn(tid):'全體')+'_課表_'+from+'_'+to+'.xlsx';
   XLSX.writeFile(wb,fname);
   toast('✅ 已匯出 '+rows.length+' 筆，可在 Excel 篩選',true);
+  }catch(err){console.error('doExportSch:',err);toast('匯出失敗：'+err.message);}
 }
 window.openExportModal=openExportModal; window.doExport=doExport;
 
@@ -2343,6 +2366,7 @@ function quickExportCal(range){
 
 async function doExportCal(fromOverride,toOverride,tidOverride,typeOverride){
   if(!isAdm()){toast('僅管理員可使用');return;}
+  try{
   const tid=(tidOverride!==undefined&&tidOverride!==null)?tidOverride:(document.getElementById('exsch-t')?.value||'');
   const type=(typeOverride!==undefined&&typeOverride!==null)?typeOverride:(document.getElementById('exsch-type')?.value||'all');
   const from=fromOverride||(document.getElementById('exsch-from')?.value||'');
@@ -2417,6 +2441,10 @@ async function doExportCal(fromOverride,toOverride,tidOverride,typeOverride){
   const fname=(tid?tn(tid):'全體')+'_行事曆課表_'+from+'_'+to+'.xlsx';
   XLSX.writeFile(wb,fname);
   toast('✅ 行事曆課表已匯出（共'+weeks.length+'週）',true);
+  }catch(err){
+    console.error('doExportCal error:',err);
+    toast('匯出失敗：'+err.message);
+  }
 }
 window.quickExportCal=quickExportCal;
 window.doExportCal=doExportCal;
@@ -2430,6 +2458,28 @@ window.quickAddCourse=quickAddCourse; window.saveQuickAdd=saveQuickAdd;
 window.openJournal=openJournal; window.saveJournal=saveJournal; window.renderJournals=renderJournals;
 
 // MOBILE NAV
+function mobTeacherChange(){
+  const v=document.getElementById('mob-t-sel').value;
+  // Sync with relevant selectors on current page
+  ['sch-t','sc-filter-t','all-filter-t'].forEach(id=>{
+    const el=document.getElementById(id);if(el){el.value=v;el.dispatchEvent(new Event('change'));}
+  });
+  // Re-render current page
+  const p=document.querySelector('.sb-item.on')?.dataset.p||'cal';
+  if(p==='cal') renderCal();
+  else if(p==='schedule'){renderSchGrid();renderSingleList();renderAllCourses();}
+}
+function showMobTeacherBar(show){
+  const bar=document.getElementById('mob-teacher-bar');
+  if(!bar) return;
+  if(show&&isAdm()){
+    bar.style.display='block';
+    const sel=document.getElementById('mob-t-sel');
+    if(sel) sel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  } else {
+    bar.style.display='none';
+  }
+}
 function mobNav(el){
   const p = el.dataset.p;
   // Sync with desktop sidebar
@@ -2445,6 +2495,9 @@ function mobNav(el){
   // Update mobile nav active state
   document.querySelectorAll('.mob-nav-item').forEach(x=>x.classList.remove('on'));
   el.classList.add('on');
+  // Show teacher filter bar for admin on schedule page
+  const showBar=['schedule','cal'].includes(p);
+  showMobTeacherBar(showBar);
 }
 function updateMobNav(p){
   document.querySelectorAll('.mob-nav-item').forEach(x=>{
@@ -2453,7 +2506,7 @@ function updateMobNav(p){
 }
 window.openOv=openOv; window.closeOv=closeOv;
 window.saveHoliday=saveHoliday; window.renderHolidays=renderHolidays; window.holDateChange=holDateChange;
-window.mobNav=mobNav;
+window.mobNav=mobNav; window.mobTeacherChange=mobTeacherChange; window.showMobTeacherBar=showMobTeacherBar;
 
 // ── HOLIDAYS ──
 function holDateChange(){
