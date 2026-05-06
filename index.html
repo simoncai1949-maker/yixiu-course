@@ -228,6 +228,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-lbl">行事曆</div>
     <div class="sb-item on" data-p="cal" onclick="goPage(this)"><span class="sb-ico">📅</span>行事曆總覽</div>
   </div>
+  <div class="sb-sec" id="presence-section" style="border-top:1px solid rgba(255,255,255,.07);padding:4px 0">
+    <div class="sb-lbl">在線上</div>
+    <div id="presence-list"></div>
+  </div>
   <div class="sb-sec" id="nav-t">
     <div class="sb-lbl">我的課程</div>
     <div class="sb-item" data-p="mycourses" onclick="goPage(this)"><span class="sb-ico">📖</span>我的課表</div>
@@ -256,7 +260,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/06</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/06　v32</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -475,7 +479,13 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
 
     <div id="pg-leave" class="pg" style="display:none">
-      <div class="notice">填寫請假／停課／調動申請，送出後由易學國文審核。</div>
+      <div class="tabs">
+        <button class="tab on" id="lv-tab-apply" onclick="leaveTab(this,'apply')">📝 提出申請</button>
+        <button class="tab" id="lv-tab-holiday" onclick="leaveTab(this,'holiday')">🚫 停課設定</button>
+      </div>
+      <!-- 申請面板 -->
+      <div id="lv-apply-panel">
+      <div class="notice">填寫請假／停課申請，送出後由易學國文審核。</div>
       <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>申請單</div></div><div class="cb">
         <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t" onchange="populateLeaveRecurring()"></select></div><div class="fg"><label>申請類型</label><select id="lv-type">
   <option value="cancel">停課（此堂課取消，不需代課）</option>
@@ -484,18 +494,46 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <div class="fg" style="margin-bottom:10px"><label>備注（選填）</label><input type="text" id="lv-note" placeholder="說明"></div>
         <hr>
         <div class="fg" style="margin-bottom:10px">
-          <label>從常態課程快速新增堂次</label>
-          <div style="display:flex;gap:6px">
-            <select id="lv-rec-sel" onchange="populateLeaveRecurring()" style="flex:1;font-size:.79rem"></select>
+          <label>從常態課程快速帶入</label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select id="lv-rec-sel" style="flex:1;min-width:0"><option value="">— 選常態課程後點「加入」—</option></select>
             <button class="btn bg bsm" onclick="addSessFromRec()">加入</button>
           </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:.78rem;font-weight:500;color:var(--navy)">堂次</div><button class="btn bg bsm" onclick="addSess()">＋ 手動新增</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="font-weight:500;font-size:.8rem">堂次</label>
+          <button class="btn bg bsm" onclick="addSess()">＋ 手動新增</button>
+        </div>
         <div id="sess-wrap"></div>
       </div></div>
       <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:2px"><button class="btn bg" onclick="clearLeave()">清除</button><button class="btn bn" onclick="submitLeave()">送出申請</button></div>
-    </div>
+      </div><!-- end lv-apply-panel -->
 
+      <!-- 停課設定面板 -->
+      <div id="lv-holiday-panel" style="display:none">
+        <div class="notice">設定停課日期後，該日的常態課程將直接從行事曆移除，不需等待審核。</div>
+        <div class="card">
+          <div class="ch"><div class="ct"><div class="dot"></div>新增停課日期</div></div>
+          <div class="cb">
+            <div class="gr g2">
+              <div class="fg"><label>說明</label><input type="text" id="my-hol-name" placeholder="例：段考、個人事務" /></div>
+              <div class="fg"><label>適用課程</label><select id="my-hol-rec"><option value="all">我的所有常態課程</option></select></div>
+            </div>
+            <div class="gr g2">
+              <div class="fg"><label>開始日期</label><input type="date" id="my-hol-from" /></div>
+              <div class="fg"><label>結束日期（單日可不填）</label><input type="date" id="my-hol-to" /></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px">
+              <button class="btn bn" onclick="saveMyHoliday()">✅ 設定停課</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct"><div class="dot"></div>我的停課紀錄</div></div>
+          <div class="cb" style="padding:0"><div id="my-holidays-list" style="padding:12px"></div></div>
+        </div>
+      </div>
+    </div>
     <div id="pg-sub" class="pg" style="display:none">
       <div class="notice">以下為已核准、尚無人接課的代課需求。</div>
       <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>待接課清單</div></div><div class="cb" style="padding:0"><div id="sub-list" style="padding:12px"></div></div></div>
@@ -2174,10 +2212,10 @@ window.calStep=calStep; window.calToday=calToday; window.setView=setView; window
 
 async function doExportSch(fromOverride, toOverride, tidOverride, typeOverride){
   if(!isAdm()){toast('僅管理員可使用');return;}
-  const tid=tidOverride!==undefined?tidOverride:document.getElementById('exsch-t').value;
-  const type=typeOverride!==undefined?typeOverride:document.getElementById('exsch-type').value;
-  const from=fromOverride||document.getElementById('exsch-from').value;
-  const to=toOverride||document.getElementById('exsch-to').value;
+  const tid=(tidOverride!==undefined&&tidOverride!==null)?tidOverride:(document.getElementById('exsch-t')?.value||'');
+  const type=(typeOverride!==undefined&&typeOverride!==null)?typeOverride:(document.getElementById('exsch-type')?.value||'all');
+  const from=fromOverride||(document.getElementById('exsch-from')?.value||'');
+  const to=toOverride||(document.getElementById('exsch-to')?.value||'');
   if(!from||!to){toast('請選擇開始和結束日期');return;}
   if(from>to){toast('開始日期不能晚於結束日期');return;}
 
@@ -2270,10 +2308,11 @@ function quickExportSch(range){
     to=sun.toISOString().slice(0,10);
   }
   // Set form values and export
-  document.getElementById('exsch-from').value=from;
-  document.getElementById('exsch-to').value=to;
-  document.getElementById('exsch-t').value='';
-  document.getElementById('exsch-type').value='all';
+  // Update DOM if available, then export
+  const ef=document.getElementById('exsch-from');if(ef)ef.value=from;
+  const et=document.getElementById('exsch-to');if(et)et.value=to;
+  const es=document.getElementById('exsch-t');if(es)es.value='';
+  const ety=document.getElementById('exsch-type');if(ety)ety.value='all';
   doExportSch(from, to, '', 'all');
 }
 window.doExportSch=doExportSch;
@@ -2298,19 +2337,16 @@ function quickExportCal(range){
     from=mon.toISOString().slice(0,10);
     to=sun.toISOString().slice(0,10);
   }
-  document.getElementById('exsch-from').value=from;
-  document.getElementById('exsch-to').value=to;
-  document.getElementById('exsch-t').value='';
-  document.getElementById('exsch-type').value='all';
+  // Pass directly to doExportCal - no DOM dependency
   doExportCal(from, to, '', 'all');
 }
 
 async function doExportCal(fromOverride,toOverride,tidOverride,typeOverride){
   if(!isAdm()){toast('僅管理員可使用');return;}
-  const tid=tidOverride!==undefined?tidOverride:document.getElementById('exsch-t').value;
-  const type=typeOverride!==undefined?typeOverride:document.getElementById('exsch-type').value;
-  const from=fromOverride||document.getElementById('exsch-from').value;
-  const to=toOverride||document.getElementById('exsch-to').value;
+  const tid=(tidOverride!==undefined&&tidOverride!==null)?tidOverride:(document.getElementById('exsch-t')?.value||'');
+  const type=(typeOverride!==undefined&&typeOverride!==null)?typeOverride:(document.getElementById('exsch-type')?.value||'all');
+  const from=fromOverride||(document.getElementById('exsch-from')?.value||'');
+  const to=toOverride||(document.getElementById('exsch-to')?.value||'');
   if(!from||!to){toast('請選擇開始和結束日期');return;}
   if(from>to){toast('開始日期不能晚於結束日期');return;}
   const fromDt=new Date(from),toDt=new Date(to);
@@ -2522,24 +2558,7 @@ function isHoliday(ds, tid, recId){
 
 
 <!-- JOURNAL MODAL -->
-<div class="ov" id="ov-journal">
-  <div class="modal" style="max-width:540px">
-    <div class="mh"><div class="mht" id="jn-title">📒 教師日誌</div><button class="mcls" onclick="closeOv('ov-journal')">✕</button></div>
-    <input type="hidden" id="jn-id" />
-    <div class="mb">
-      <div class="gr g2">
-        <div class="fg"><label>班級人數</label><input type="number" id="jn-headcount" placeholder="0" min="0" /></div>
-        <div class="fg"><label>試聽人數</label><input type="number" id="jn-trial" placeholder="0" min="0" /></div>
-      </div>
-      <div class="fg" style="margin-bottom:10px"><label>授課進度</label><textarea id="jn-progress" placeholder="本堂授課內容、進度…"></textarea></div>
-      <div class="fg" style="margin-bottom:10px"><label>考試範圍</label><input type="text" id="jn-exam" placeholder="填寫考試範圍" /></div>
-      <div class="fg" style="margin-bottom:10px"><label>作業</label><input type="text" id="jn-hw" placeholder="填寫作業內容" /></div>
-      <div class="fg" style="margin-bottom:0"><label>其他備注</label><textarea id="jn-note" placeholder="其他需要記錄的事項…"></textarea></div>
-      <div class="priv-notice" style="margin-top:8px">🔒 教師日誌僅本人及管理員（易學國文）可查閱。</div>
-    </div>
-    <div class="mf"><button class="btn bg" onclick="closeOv('ov-journal')">取消</button><button class="btn bn" onclick="saveJournal()">儲存日誌</button></div>
-  </div>
-</div>
+
 
 
 <div class="ov" id="ov-edit-rec">
@@ -2714,9 +2733,9 @@ function isHoliday(ds, tid, recId){
         <div class="fg"><label>派師費</label><input type="number" id="qa-ds" value="0" min="0" /></div>
         <div class="fg"><label>講義費</label><input type="number" id="qa-lec" value="0" min="0" /></div>
       </div>
-      <div class="ckr" onclick="document.getElementById('qa-isrec').click();document.getElementById('qa-from-row').style.display=document.getElementById('qa-isrec').checked?'grid':'none'">
-        <input type="checkbox" id="qa-isrec" onchange="document.getElementById('qa-from-row').style.display=this.checked?'grid':'none'">
-        <label for="qa-isrec" style="font-size:.82rem">設為常態課程（每週重複）</label>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer" onclick="toggleRecCheck()">
+        <input type="checkbox" id="qa-isrec" onclick="event.stopPropagation()" onchange="document.getElementById('qa-from-row').style.display=this.checked?'grid':'none'" style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer">
+        <label style="font-size:.82rem;cursor:pointer;user-select:none">設為常態課程（每週重複）</label>
       </div>
       <div id="qa-from-row" class="gr g2" style="display:none;margin-top:8px">
         <div class="fg"><label>生效日（起）</label><input type="date" id="qa-from" /></div>
