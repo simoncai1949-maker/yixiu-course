@@ -264,7 +264,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v47</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v48</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -2365,7 +2365,99 @@ async function saveNcQuickAdd(){
   renderNcCal();
 }
 window.setMcSort=setMcSort; window.openMyCourseDetail=openMyCourseDetail; window.quickCancelCourse=quickCancelCourse;
-window.ncCalStep=ncCalStep; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker;
+// ── NC COPY/PASTE ──
+let _ncClipboard = null;
+
+function ncCopyCourse(cacheKey){
+  const ev=window[cacheKey];if(!ev)return;
+  let obj=null;
+  if(ev.src==='rec') obj=S.recurring.find(x=>x.id===ev.id);
+  else if(ev.src==='spot') obj=S.spots.find(x=>x.id===ev.id);
+  _ncClipboard={dept:ev.dept,branch:ev.branch,grade:ev.grade,start:ev.start,end:ev.end,
+    fee:obj?.fee||0,ds:obj?.ds||0,lec:obj?.lec||0};
+  toast('✅ 已複製「'+ev.dept+ev.branch+'」，點其他日期貼上',true);
+  closeOv('ov-nc-picker');
+  renderNcCal();
+}
+
+async function ncPasteCourse(ds){
+  if(!_ncClipboard){toast('尚未複製任何課程');return;}
+  const c=_ncClipboard;
+  await fsAdd('spots',{tid:cur.id,date:ds,start:c.start,end:c.end,
+    dept:c.dept,branch:c.branch,grade:c.grade,fee:c.fee,ds:c.ds,lec:c.lec});
+  toast('✅ 已貼上「'+c.dept+c.branch+'」到 '+ds,true);
+  renderNcCal();
+}
+
+function ncClearClipboard(){
+  _ncClipboard=null;
+  renderNcCal();
+  toast('已清除複製');
+}
+
+function ncCellClick(ds){
+  const evs=getMyCourseEvents(cur.id,ds);
+  if(_ncClipboard){
+    // Show paste menu using DOM
+    const c=_ncClipboard;
+    const body=document.getElementById('nc-picker-body');
+    const titleEl=document.getElementById('nc-picker-title');
+    if(!body||!titleEl)return;
+    titleEl.textContent=ds;
+    body.innerHTML='';
+    // Clipboard preview
+    const preview=document.createElement('div');
+    preview.style.cssText='padding:8px;background:rgba(37,99,235,.06);border:1px solid var(--blue);border-radius:6px;margin-bottom:10px';
+    preview.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">📋 剪貼簿</div>'+
+      '<div style="font-weight:500">'+c.dept+c.branch+c.grade+'</div>'+
+      '<div style="font-size:.72rem;color:var(--muted)">'+c.start+'–'+c.end+'</div>';
+    body.appendChild(preview);
+    // Paste button
+    const pasteBtn=document.createElement('button');
+    pasteBtn.className='btn bn';pasteBtn.style.cssText='width:100%;margin-bottom:8px';
+    pasteBtn.textContent='📋 貼上到這天';
+    pasteBtn.onclick=function(){closeOv('ov-nc-picker');ncPasteCourse(ds);};
+    body.appendChild(pasteBtn);
+    // Clear button
+    const clearBtn=document.createElement('button');
+    clearBtn.className='btn bg';clearBtn.style.cssText='width:100%;margin-bottom:8px';
+    clearBtn.textContent='✕ 清除複製';
+    clearBtn.onclick=function(){closeOv('ov-nc-picker');ncClearClipboard();};
+    body.appendChild(clearBtn);
+    // Existing courses
+    if(evs.length){
+      const hr=document.createElement('hr');hr.style.margin='8px 0';body.appendChild(hr);
+      const typeL={rec:'常態',spot:'點狀',admin:'管理'};
+      evs.forEach((ev,i)=>{
+        const key='ncev_'+ds.replace(/-/g,'')+'_'+i;
+        window[key]={src:ev.src,id:ev.id||'',ds,start:ev.start||'',end:ev.end||'',dept:ev.dept||'',branch:ev.branch||'',grade:ev.grade||''};
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:6px';
+        row.innerHTML='<div style="flex:1;font-size:.82rem">'+ev.dept+' '+ev.branch+' '+ev.grade+'<span style="color:var(--muted);font-size:.7rem;margin-left:4px">'+ev.start+'</span></div>';
+        const cpBtn=document.createElement('button');
+        cpBtn.className='btn bg bxs';cpBtn.textContent='📋';
+        cpBtn.onclick=(function(k){return function(){ncCopyCourse(k);};})(key);
+        row.appendChild(cpBtn);
+        body.appendChild(row);
+      });
+    }
+    // Add new button
+    const addDiv=document.createElement('div');
+    addDiv.style.cssText='text-align:center;padding:8px;border:1px dashed var(--bdr);border-radius:var(--r);cursor:pointer;color:var(--blue);font-size:.8rem';
+    addDiv.textContent='➕ 新增課程';
+    addDiv.onclick=function(){closeOv('ov-nc-picker');openNcCalDay(ds);};
+    body.appendChild(addDiv);
+    openOv('ov-nc-picker');
+  } else if(evs.length>0){
+    ncDayPicker(ds);
+  } else {
+    openNcCalDay(ds);
+  }
+}
+
+window.ncCalStep=ncCalStep;
+window.ncCopyCourse=ncCopyCourse; window.ncPasteCourse=ncPasteCourse;
+window.ncClearClipboard=ncClearClipboard; window.ncCellClick=ncCellClick; window.renderNcCal=renderNcCal; window.openNcCalDay=openNcCalDay; window.openNcEditEvent=openNcEditEvent; window.saveNcEditEvent=saveNcEditEvent; window.deleteNcEvent=deleteNcEvent; window.saveNcQuickAdd=saveNcQuickAdd; window.ncOpenFromCache=ncOpenFromCache; window.ncDayPicker=ncDayPicker;
 function leaveTab(el,tab){
   document.querySelectorAll('#pg-leave .tab').forEach(x=>x.classList.remove('on'));
   el.classList.add('on');
