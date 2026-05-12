@@ -264,7 +264,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v43</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v45</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -890,6 +890,12 @@ function doLogin(){
     cur={id:tid,name:t.name,role:'teacher'};if(remember)saveSession(cur);enterApp();
   }
 }
+// Delegate click for ov-mode-btn (dynamically created)
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.ov-mode-btn');
+  if(btn){ calOvMode = btn.dataset.mode; renderCal(); }
+});
+
 function enterApp(){
   document.getElementById('login-screen').classList.remove('show');
   document.getElementById('app').classList.add('show');
@@ -1596,136 +1602,209 @@ function renderWeek(){
   document.getElementById('cal-body').innerHTML=h;
 }
 
+
+
+
 // ── OVERVIEW MODE ──
-// calOvMode: 'day' or 'week'
-let calOvMode = 'week';
+let calOvMode = "week";
+
+function _setOvMode(m){ calOvMode=m; renderCal(); }
+window._setOvMode = _setOvMode;
+
+function buildOvToggle(){
+  const dCls = calOvMode==="day"?"bn":"bg";
+  const wCls = calOvMode==="week"?"bn":"bg";
+  return "<div style='margin-left:auto;display:flex;gap:4px'>" +
+    "<button class='btn " + dCls + " bsm ov-mode-btn' data-mode='day'>日</button>" +
+    "<button class='btn " + wCls + " bsm ov-mode-btn' data-mode='week'>週</button>" +
+    "</div>";
+}
 
 function renderOverview(){
-  const el = document.getElementById('cal-body'); if(!el) return;
-  // Update label
-  const DWF = ['日','一','二','三','四','五','六'];
+  const el = document.getElementById("cal-body");
+  if(!el) return;
+  const DWF = ["日","一","二","三","四","五","六"];
+  if(calOvMode === "day") renderOverviewDay(el, DWF);
+  else renderOverviewWeek(el, DWF);
+}
 
-  if(calOvMode === 'day'){
-    // Day overview: teachers × slots (AM/PM/EVE)
-    if(!calDay) calDay = new Date().toISOString().slice(0,10);
-    const ds = calDay;
-    const dt = new Date(ds);
-    document.getElementById('cal-lbl').textContent = ds + ' (' + DWF[dt.getDay()] + ')';
-
-    const teachers = S.teachers;
-    const evs_all = getEventsForDate(ds);
-    const SLOTS = [
-      {label:'上午 08-12', from:'08:00', to:'12:59'},
-      {label:'下午 13-18', from:'13:00', to:'18:59'},
-      {label:'晚上 19-22', from:'19:00', to:'22:59'},
-    ];
-
-    let h = `<div style="padding:8px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px">
-      <button class="btn bg bsm" onclick="calDayNav(-1)">‹</button>
-      <input type="date" value="${ds}" onchange="calDay=this.value;renderCal()" style="font-size:.8rem;padding:4px 8px;width:auto">
-      <span style="font-size:.82rem;font-weight:600;color:var(--navy)">(${DWF[dt.getDay()]})</span>
-      <button class="btn bg bsm" onclick="calDayNav(1)">›</button>
-      <div style="margin-left:auto;display:flex;gap:4px">
-        <button class="btn ${calOvMode==='day'?'bn':'bg'} bsm" onclick="calOvMode='day';renderCal()">日</button>
-        <button class="btn ${calOvMode==='week'?'bn':'bg'} bsm" onclick="calOvMode='week';renderCal()">週</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:400px">
-      <thead><tr>
-        <th style="background:var(--navy);color:#fff;font-size:.72rem;padding:8px 12px;text-align:left;width:90px">師資</th>
-        ${SLOTS.map(s=>`<th style="background:var(--navy);color:#fff;font-size:.72rem;padding:8px;text-align:center;white-space:pre-line">${s.label}</th>`).join('')}
-      </tr></thead>
-      <tbody>`;
-
-    teachers.forEach(t => {
-      const tEvs = evs_all.filter(ev => ev.tid === t.id);
-      const hasCourse = tEvs.length > 0;
-      h += `<tr style="border-bottom:1px solid var(--bdr);${hasCourse?'background:rgba(16,185,129,.03)':''}">
-        <td style="padding:8px 12px;font-weight:${hasCourse?'600':'400'};font-size:.8rem;color:${hasCourse?'var(--navy)':'var(--muted)'}">${t.name}</td>`;
-      SLOTS.forEach(slot => {
-        const slotEvs = tEvs.filter(ev => ev.start >= slot.from && ev.start <= slot.to);
-        if(slotEvs.length) {
-          h += `<td style="padding:6px 8px;vertical-align:top">` +
-            slotEvs.map(ev => `<div style="background:${ev.type==='rec'?'rgba(16,185,129,.12)':ev.type==='pend'?'rgba(245,158,11,.12)':'rgba(37,99,235,.1)'};border-left:3px solid ${ev.type==='rec'?'#10b981':ev.type==='pend'?'#f59e0b':'#2563eb'};border-radius:4px;padding:3px 6px;margin-bottom:3px;font-size:.72rem;line-height:1.4">
-              <div style="font-weight:600">${ev.start}–${ev.end}</div>
-              <div>${ev.label}</div>
-            </div>`).join('') + `</td>`;
-        } else {
-          h += `<td style="padding:6px 8px;text-align:center;color:rgba(0,0,0,.1);font-size:.8rem">—</td>`;
-        }
-      });
-      h += `</tr>`;
+function renderOverviewDay(el, DWF){
+  if(!calDay) calDay = new Date().toISOString().slice(0,10);
+  const ds = calDay, dt = new Date(ds), wd = DWF[dt.getDay()];
+  document.getElementById("cal-lbl").textContent = ds + " (" + wd + ")";
+  const teachers = S.teachers;
+  const evs_all = getEventsForDate(ds);
+  const SLOTS = [
+    {label:"上午 08-12", from:"08:00", to:"12:59"},
+    {label:"下午 13-18", from:"13:00", to:"18:59"},
+    {label:"晚上 19-22", from:"19:00", to:"22:59"}
+  ];
+  // Build day nav using DOM to avoid quote issues
+  const navEl = document.createElement("div");
+  navEl.style.cssText = "padding:8px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px";
+  const pb = document.createElement("button");
+  pb.className="btn bg bsm"; pb.textContent="‹"; pb.onclick=function(){calDayNav(-1);};
+  navEl.appendChild(pb);
+  const dateInp = document.createElement("input");
+  dateInp.type="date"; dateInp.value=ds; dateInp.style.cssText="font-size:.8rem;padding:4px 8px;width:auto";
+  dateInp.onchange=function(){calDay=this.value;renderCal();};
+  navEl.appendChild(dateInp);
+  const wdSpan = document.createElement("span");
+  wdSpan.style.cssText="font-size:.82rem;font-weight:600;color:var(--navy)";
+  wdSpan.textContent="("+wd+")";
+  navEl.appendChild(wdSpan);
+  const nb = document.createElement("button");
+  nb.className="btn bg bsm"; nb.textContent="›"; nb.onclick=function(){calDayNav(1);};
+  navEl.appendChild(nb);
+  const togDiv = document.createElement("div");
+  togDiv.style.cssText="margin-left:auto;display:flex;gap:4px";
+  const db = document.createElement("button");
+  db.className="btn "+(calOvMode==="day"?"bn":"bg")+" bsm"; db.textContent="日";
+  db.onclick=function(){calOvMode="day";renderCal();};
+  const wb = document.createElement("button");
+  wb.className="btn "+(calOvMode==="week"?"bn":"bg")+" bsm"; wb.textContent="週";
+  wb.onclick=function(){calOvMode="week";renderCal();};
+  togDiv.appendChild(db); togDiv.appendChild(wb);
+  navEl.appendChild(togDiv);
+  let h = "";
+  h += "<div style='overflow-x:auto'><table style='width:100%;border-collapse:collapse;min-width:400px'><thead><tr>";
+  h += "<th style='background:var(--navy);color:#fff;font-size:.72rem;padding:8px 12px;text-align:left;width:80px'>師資</th>";
+  SLOTS.forEach(function(s){ h += "<th style='background:var(--navy);color:#fff;font-size:.72rem;padding:8px;text-align:center'>" + s.label + "</th>"; });
+  h += "</tr></thead><tbody>";
+  teachers.forEach(function(t){
+    const tEvs = evs_all.filter(function(ev){ return ev.tid === t.id; });
+    const has = tEvs.length > 0;
+    h += "<tr style='border-bottom:1px solid var(--bdr)" + (has ? ";background:rgba(16,185,129,.03)" : ";opacity:.5") + "'>";
+    h += "<td style='padding:8px 12px;font-weight:" + (has?"600":"400") + ";font-size:.8rem;color:" + (has?"var(--navy)":"var(--muted)") + "'>" + t.name + "</td>";
+    SLOTS.forEach(function(slot){
+      const sEvs = tEvs.filter(function(ev){ return ev.start >= slot.from && ev.start <= slot.to; });
+      if(sEvs.length){
+        h += "<td style='padding:5px 6px;vertical-align:top'>";
+        sEvs.forEach(function(ev){
+          const bc = ev.type==="rec"?"rgba(16,185,129,.15)":ev.type==="pend"?"rgba(245,158,11,.15)":"rgba(37,99,235,.12)";
+          const bl = ev.type==="rec"?"#10b981":ev.type==="pend"?"#f59e0b":"#2563eb";
+          h += "<div style='background:" + bc + ";border-left:3px solid " + bl + ";border-radius:4px;padding:3px 6px;margin-bottom:3px;font-size:.72rem;line-height:1.4'>" +
+            "<div style='font-weight:600'>" + ev.start + "–" + ev.end + "</div>" +
+            "<div>" + ev.label + "</div></div>";
+        });
+        h += "</td>";
+      } else {
+        h += "<td style='padding:6px 8px;text-align:center;color:rgba(0,0,0,.12);font-size:.8rem'>—</td>";
+      }
     });
+    h += "</tr>";
+  });
+  h += "</tbody></table></div>";
+  el.innerHTML = "";
+  el.appendChild(navEl);
+  const tableWrap = document.createElement("div");
+  tableWrap.innerHTML = h;
+  el.appendChild(tableWrap);
+}
 
-    h += `</tbody></table></div>`;
-    el.innerHTML = h;
+function renderOverviewWeek(el, DWF){
+  const now = new Date(), base = new Date(now);
+  base.setDate(now.getDate() + calWOff*7);
+  const dow = base.getDay(), diff = dow===0?-6:1-dow;
+  const mon = new Date(base); mon.setDate(base.getDate()+diff);
+  const dates = Array.from({length:7}, function(_,i){ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  const todStr = now.toISOString().slice(0,10);
+  const rLabel = dates[0].toLocaleDateString("zh-TW",{month:"short",day:"numeric"}) + " – " + dates[6].toLocaleDateString("zh-TW",{month:"short",day:"numeric"});
+  document.getElementById("cal-lbl").textContent = rLabel;
+  const teachers = S.teachers;
+  const weekEvs = {};
+  dates.forEach(function(d){ weekEvs[d.toISOString().slice(0,10)] = getEventsForDate(d.toISOString().slice(0,10)); });
 
-  } else {
-    // Week overview: teachers × Mon~Sun
-    const now = new Date(), base = new Date(now);
-    base.setDate(now.getDate() + calWOff*7);
-    const dow = base.getDay(), diff = dow===0?-6:1-dow;
-    const mon = new Date(base); mon.setDate(base.getDate()+diff);
-    const dates = Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
-    const todStr = now.toISOString().slice(0,10);
+  // Build table
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "overflow-x:auto";
+  const nav = document.createElement("div");
+  nav.style.cssText = "padding:8px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px";
+  // Build nav with buttons
+  const prevBtn = document.createElement("button");
+  prevBtn.className = "btn bg bsm"; prevBtn.textContent = "‹";
+  prevBtn.onclick = function(){ calStep(-1); };
+  nav.appendChild(prevBtn);
+  const label = document.createElement("span");
+  label.style.cssText = "font-size:.8rem;color:var(--navy);font-weight:500";
+  label.textContent = rLabel;
+  nav.appendChild(label);
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "btn bg bsm"; nextBtn.textContent = "›";
+  nextBtn.onclick = function(){ calStep(1); };
+  nav.appendChild(nextBtn);
+  const todayBtn = document.createElement("button");
+  todayBtn.className = "btn bg bsm"; todayBtn.textContent = "今天";
+  todayBtn.onclick = function(){ calToday(); };
+  nav.appendChild(todayBtn);
+  // Day/Week toggle
+  const toggleDiv = document.createElement("div");
+  toggleDiv.style.cssText = "margin-left:auto;display:flex;gap:4px";
+  const dayBtn = document.createElement("button");
+  dayBtn.className = "btn " + (calOvMode==="day"?"bn":"bg") + " bsm";
+  dayBtn.textContent = "日";
+  dayBtn.onclick = function(){ calOvMode="day"; renderCal(); };
+  const weekBtn = document.createElement("button");
+  weekBtn.className = "btn " + (calOvMode==="week"?"bn":"bg") + " bsm";
+  weekBtn.textContent = "週";
+  weekBtn.onclick = function(){ calOvMode="week"; renderCal(); };
+  toggleDiv.appendChild(dayBtn);
+  toggleDiv.appendChild(weekBtn);
+  nav.appendChild(toggleDiv);
 
-    document.getElementById('cal-lbl').textContent =
-      dates[0].toLocaleDateString('zh-TW',{month:'short',day:'numeric'}) +
-      ' – ' + dates[6].toLocaleDateString('zh-TW',{month:'short',day:'numeric'});
+  const table = document.createElement("table");
+  table.style.cssText = "width:100%;border-collapse:collapse;min-width:500px";
 
-    const teachers = S.teachers;
-    // Pre-fetch all events for the week
-    const weekEvs = {};
-    dates.forEach(d => { weekEvs[d.toISOString().slice(0,10)] = getEventsForDate(d.toISOString().slice(0,10)); });
+  // Header
+  const thead = document.createElement("thead");
+  let hdrHtml = "<tr><th style='background:var(--navy);color:#fff;font-size:.72rem;padding:8px 10px;text-align:left;width:68px;position:sticky;left:0'>師資</th>";
+  dates.forEach(function(d){
+    const ds = d.toISOString().slice(0,10), isT = ds===todStr;
+    hdrHtml += "<th style='background:" + (isT?"#1d4ed8":"var(--navy)") + ";color:#fff;font-size:.72rem;padding:6px 4px;text-align:center;min-width:85px'><div style='font-size:.65rem'>" + DWF[d.getDay()] + "</div><div style='font-size:.95rem;font-weight:" + (isT?"700":"400") + "'>" + d.getDate() + "</div></th>";
+  });
+  hdrHtml += "</tr>";
+  thead.innerHTML = hdrHtml;
+  table.appendChild(thead);
 
-    let h = `<div style="padding:8px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px">
-      <button class="btn bg bsm" onclick="calStep(-1)">‹</button>
-      <span style="font-size:.8rem;color:var(--muted)">${dates[0].toLocaleDateString('zh-TW',{month:'short',day:'numeric'})} – ${dates[6].toLocaleDateString('zh-TW',{month:'short',day:'numeric'})}</span>
-      <button class="btn bg bsm" onclick="calStep(1)">›</button>
-      <button class="btn bg bsm" onclick="calToday()">今天</button>
-      <div style="margin-left:auto;display:flex;gap:4px">
-        <button class="btn ${calOvMode==='day'?'bn':'bg'} bsm" onclick="calOvMode='day';renderCal()">日</button>
-        <button class="btn ${calOvMode==='week'?'bn':'bg'} bsm" onclick="calOvMode='week';renderCal()">週</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:600px">
-      <thead><tr>
-        <th style="background:var(--navy);color:#fff;font-size:.72rem;padding:8px 12px;text-align:left;width:72px;position:sticky;left:0">師資</th>
-        ${dates.map(d=>{
-          const ds=d.toISOString().slice(0,10),isT=ds===todStr;
-          return`<th style="background:${isT?'var(--blue)':'var(--navy)'};color:#fff;font-size:.72rem;padding:8px 4px;text-align:center;min-width:90px">
-            <div>${DWF[d.getDay()]}</div>
-            <div style="font-size:.9rem;font-weight:${isT?'700':'400'}">${d.getDate()}</div>
-          </th>`;
-        }).join('')}
-      </tr></thead>
-      <tbody>`;
-
-    teachers.forEach(t => {
-      // Check if teacher has any course this week
-      const hasWeekCourse = dates.some(d => weekEvs[d.toISOString().slice(0,10)].some(ev=>ev.tid===t.id));
-      h += `<tr style="border-bottom:1px solid var(--bdr);${hasWeekCourse?'':'opacity:.5'}">
-        <td style="padding:6px 12px;font-weight:${hasWeekCourse?'600':'400'};font-size:.78rem;color:${hasWeekCourse?'var(--navy)':'var(--muted)'};position:sticky;left:0;background:var(--w);border-right:2px solid var(--bdr)">${t.name}</td>`;
-      dates.forEach(d => {
-        const ds = d.toISOString().slice(0,10);
-        const tEvs = weekEvs[ds].filter(ev=>ev.tid===t.id);
-        const isT = ds===todStr;
-        if(tEvs.length) {
-          h += `<td style="padding:4px;vertical-align:top;background:${isT?'rgba(37,99,235,.03)':''}">` +
-            tEvs.map(ev=>`<div style="background:${ev.type==='rec'?'rgba(16,185,129,.15)':ev.type==='pend'?'rgba(245,158,11,.15)':'rgba(37,99,235,.12)'};border-left:2px solid ${ev.type==='rec'?'#10b981':ev.type==='pend'?'#f59e0b':'#2563eb'};border-radius:3px;padding:2px 5px;margin-bottom:2px;font-size:.65rem;line-height:1.4;cursor:pointer" onclick="showDay('${ds}')">
-              <div style="font-weight:600;white-space:nowrap">${ev.start}</div>
-              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${ev.label}</div>
-            </div>`).join('') + `</td>`;
-        } else {
-          h += `<td style="padding:4px;text-align:center;color:rgba(0,0,0,.1);font-size:.75rem;background:${isT?'rgba(37,99,235,.03)':''}">—</td>`;
-        }
-      });
-      h += `</tr>`;
+  // Body
+  const tbody = document.createElement("tbody");
+  teachers.forEach(function(t){
+    const hasWeek = dates.some(function(d){ return weekEvs[d.toISOString().slice(0,10)].some(function(ev){ return ev.tid===t.id; }); });
+    const tr = document.createElement("tr");
+    tr.style.cssText = "border-bottom:1px solid var(--bdr)" + (hasWeek?"":";opacity:.45");
+    // Name cell
+    const nameTd = document.createElement("td");
+    nameTd.style.cssText = "padding:6px 10px;font-weight:" + (hasWeek?"600":"400") + ";font-size:.78rem;color:" + (hasWeek?"var(--navy)":"var(--muted)") + ";position:sticky;left:0;background:var(--w);border-right:2px solid var(--bdr)";
+    nameTd.textContent = t.name;
+    tr.appendChild(nameTd);
+    // Day cells
+    dates.forEach(function(d){
+      const ds = d.toISOString().slice(0,10), isT = ds===todStr;
+      const tEvs = weekEvs[ds].filter(function(ev){ return ev.tid===t.id; });
+      const td = document.createElement("td");
+      td.style.cssText = "padding:3px;vertical-align:top;background:" + (isT?"rgba(37,99,235,.04)":"");
+      if(tEvs.length){
+        tEvs.forEach(function(ev){
+          const bc = ev.type==="rec"?"rgba(16,185,129,.18)":ev.type==="pend"?"rgba(245,158,11,.18)":"rgba(37,99,235,.14)";
+          const bl = ev.type==="rec"?"#10b981":ev.type==="pend"?"#f59e0b":"#2563eb";
+          const chip = document.createElement("div");
+          chip.style.cssText = "background:" + bc + ";border-left:2px solid " + bl + ";border-radius:3px;padding:2px 4px;margin-bottom:2px;font-size:.64rem;line-height:1.4;cursor:pointer;overflow:hidden";
+          chip.innerHTML = "<div style='font-weight:600;white-space:nowrap'>" + ev.start + "</div><div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px'>" + ev.label + "</div>";
+          chip.onclick = (function(s){ return function(){ showDay(s); }; })(ds);
+          td.appendChild(chip);
+        });
+      } else {
+        td.innerHTML = "<div style='text-align:center;color:rgba(0,0,0,.1);font-size:.75rem;padding-top:6px'>—</div>";
+      }
+      tr.appendChild(td);
     });
-
-    h += `</tbody></table></div>`;
-    el.innerHTML = h;
-  }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  el.innerHTML = "";
+  el.appendChild(nav);
+  el.appendChild(wrap);
 }
 window.renderOverview = renderOverview;
 
