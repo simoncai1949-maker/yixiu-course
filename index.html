@@ -264,7 +264,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v45</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v47</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -1789,7 +1789,7 @@ function renderOverviewWeek(el, DWF){
           const bl = ev.type==="rec"?"#10b981":ev.type==="pend"?"#f59e0b":"#2563eb";
           const chip = document.createElement("div");
           chip.style.cssText = "background:" + bc + ";border-left:2px solid " + bl + ";border-radius:3px;padding:2px 4px;margin-bottom:2px;font-size:.64rem;line-height:1.4;cursor:pointer;overflow:hidden";
-          chip.innerHTML = "<div style='font-weight:600;white-space:nowrap'>" + ev.start + "</div><div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px'>" + ev.label + "</div>";
+          chip.innerHTML = "<div style='font-weight:600;white-space:nowrap'>" + ev.start + "–" + ev.end + "</div><div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px'>" + ev.label + "</div>";
           chip.onclick = (function(s){ return function(){ showDay(s); }; })(ds);
           td.appendChild(chip);
         });
@@ -1836,7 +1836,7 @@ function renderDay(){
   document.getElementById('cal-body').innerHTML=h;
 }
 
-function calDayNav(d){if(!calDay)calDay=new Date().toISOString().slice(0,10);const dt=new Date(calDay);dt.setDate(dt.getDate()+d);calDay=dt.toISOString().slice(0,10);renderDay();}
+function calDayNav(d){if(!calDay)calDay=new Date().toISOString().slice(0,10);const dt=new Date(calDay);dt.setDate(dt.getDate()+d);calDay=dt.toISOString().slice(0,10);if(calView==='overview'){renderCal();}else{renderDay();}}
 function showDay(ds){
   window._cds=ds;
   const evs=getEventsForDate(ds);if(!evs.length)return;
