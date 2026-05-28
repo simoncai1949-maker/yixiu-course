@@ -264,7 +264,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v48</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v49</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -2081,7 +2081,15 @@ function doExport(){
   const tid=document.getElementById('exp-t').value;if(!tid){toast('請選擇師資');return;}
   const range=document.getElementById('exp-range').value,dates=getExportDates(range),tname=tn(tid);
   let rows=[],sn=0;
-  dates.forEach(ds=>{const wd=new Date(ds).getDay();S.courses.filter(c=>c.tid===tid&&c.date===ds).forEach(c=>{sn++;rows.push([sn,ds,c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);});S.recurring.filter(r=>r.tid===tid&&r.wd===wd&&(!r.from||ds>=r.from)&&(!r.to||ds<=r.to)).forEach(r=>{const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));if(!cancelled){sn++;rows.push([sn,ds,r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);}});S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>{sn++;rows.push([sn,ds,s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);});});
+  dates.forEach(ds=>{const wd=new Date(ds).getDay();S.courses.filter(c=>c.tid===tid&&c.date===ds).forEach(c=>{sn++;rows.push([sn,ds,c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);});S.recurring.filter(r=>{
+      if(r.tid!==tid||r.wd!==wd) return false;
+      if(r.from&&ds<r.from) return false;
+      if(r.to&&ds>r.to) return false;
+      const freq=r.freq||'weekly';
+      if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return false;}
+      if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;
+      return true;
+    }).forEach(r=>{const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));if(!cancelled){sn++;rows.push([sn,ds,r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);}});S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>{sn++;rows.push([sn,ds,s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);});});
   if(!rows.length){toast('此期間無課程資料');return;}
   const dataRow=6,totalRow=rows.length+dataRow;
   const wsData=[['易學國文師資團隊 — 段數表','','','','','','','',''],['師資：'+tname,'','','','','','','',''],['期間：'+dates[0]+' ～ '+dates[dates.length-1],'','','','','','','',''],[], ['堂次','日期','班部（班部+分校）','年段','時間','鐘點費（元）','派師費（元）','講義費（元）','備注'],...rows,[],['','','','','合計','=SUM(F'+dataRow+':F'+(totalRow-1)+')','=SUM(G'+dataRow+':G'+(totalRow-1)+')','=SUM(H'+dataRow+':H'+(totalRow-1)+')','']];
