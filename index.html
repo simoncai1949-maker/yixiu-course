@@ -200,6 +200,52 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 .nc-ev{font-size:.62rem;background:rgba(16,185,129,.15);border-left:2px solid var(--grn);border-radius:3px;padding:1px 4px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* ── PRESENCE ── */
 #presence-section{border-top:1px solid rgba(255,255,255,.07);padding:4px 0;}
+
+/* ── MONTH CALENDAR ── */
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--bdr);}
+.mdn{background:var(--navy);color:#fff;font-size:.7rem;font-weight:600;padding:7px 8px;text-align:center;}
+.mdc{background:var(--w);min-height:72px;padding:4px 6px;cursor:pointer;transition:background .1s;vertical-align:top;}
+.mdc:hover{background:var(--blight);}
+.mdc.today{background:#eff6ff;}
+.mdc.other{background:#f8fafd;}
+.mdt{font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:3px;}
+.mdc.today .mdt{color:var(--blue);font-weight:700;}
+.mc{font-size:.62rem;padding:1px 4px;border-radius:3px;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mc.ev-reg{background:rgba(37,99,235,.1);color:var(--navy);}
+.mc.ev-rec{background:rgba(16,185,129,.1);color:#065f46;}
+.mc.ev-pend{background:rgba(245,158,11,.12);color:#92400e;}
+.mc.ev-ok{background:rgba(16,185,129,.08);color:#065f46;}
+.mc.ev-take{background:rgba(99,102,241,.1);color:#3730a3;}
+.mc.emp{color:var(--muted);font-size:.6rem;}
+
+/* ── REQUEST LIST ── */
+.ri{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px 14px;margin-bottom:8px;}
+.rmeta{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.rwho{font-weight:600;font-size:.82rem;color:var(--navy);}
+.racts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.rss{font-size:.76rem;color:var(--muted);margin-top:5px;line-height:1.6;}
+.rdet{font-size:.73rem;color:var(--muted);margin-top:4px;}
+.bad{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:700;margin-left:6px;}
+.bp2{background:rgba(245,158,11,.15);color:#92400e;}
+.ba2{background:rgba(16,185,129,.15);color:#065f46;}
+.br2{background:rgba(239,68,68,.12);color:#b91c1c;}
+
+/* ── SESSION EDITOR ── */
+.sessh{background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--bdr);}
+.sesstag{font-size:.68rem;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.sdept,.sbranch,.sgrade,.ss,.se,.sd{padding:5px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:.78rem;font-family:'Noto Sans TC',sans-serif;background:var(--w);color:var(--txt);}
+
+/* ── MISC CLASSES ── */
+.hint{font-size:.71rem;color:var(--muted);margin-top:4px;}
+.il{display:inline;}
+.ir{float:right;}
+.iv{visibility:hidden;}
+.chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:500;}
+.chip.c-pend{background:rgba(245,158,11,.12);color:#92400e;}
+.tc{text-align:center;}
+.sb-sec .sb-item{} /* presence section items */
+.btk{background:rgba(99,102,241,.1);color:#3730a3;border-color:rgba(99,102,241,.25);}
+.badge.btk{background:rgba(99,102,241,.1);color:#3730a3;}
 </style>
 </head>
 <body>
@@ -287,13 +333,10 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v60</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v62</div>
 </nav>
 <div class="main">
-  <div class="topbar">
-    <div class="tb-title" id="pg-title">行事曆總覽</div>
-    <div id="pg-acts" style="display:flex;gap:6px;align-items:center"></div>
-  </div>
+  
   <div class="content">
 
     <div id="pg-cal" class="pg">
@@ -3130,6 +3173,21 @@ function isHoliday(ds, tid){
     </div>
     <div class="mb" id="nc-picker-body"></div>
   </div>
+</div>
+
+<div class="mob-nav" id="mob-nav" style="display:none">
+  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
+  <div class="mob-nav-item" data-p="mycourses" onclick="mobNav(this)"><div class="mni">📖</div>課表</div>
+  <div class="mob-nav-item" data-p="newcourse" onclick="mobNav(this)"><div class="mni">➕</div>新增</div>
+  <div class="mob-nav-item" data-p="leave" onclick="mobNav(this)"><div class="mni">📝</div>申請</div>
+  <div class="mob-nav-item" data-p="sub" onclick="mobNav(this)"><div class="mni">🔄</div>代課</div>
+</div>
+<div class="mob-nav" id="mob-nav-adm" style="display:none">
+  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
+  <div class="mob-nav-item" data-p="review" onclick="mobNav(this)"><div class="mni">✅</div>審核</div>
+  <div class="mob-nav-item" data-p="schedule" onclick="mobNav(this)"><div class="mni">📋</div>課表</div>
+  <div class="mob-nav-item" data-p="teachers" onclick="mobNav(this)"><div class="mni">👤</div>師資</div>
+  <div class="mob-nav-item" data-p="exportsch" onclick="mobNav(this)"><div class="mni">📊</div>匯出</div>
 </div>
 </body>
 </html>
