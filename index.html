@@ -258,13 +258,14 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📓</span>教師日誌</div>
     <div class="sb-item" data-p="history" onclick="goPage(this)"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="exportsch" onclick="goPage(this)"><span class="sb-ico">📊</span>匯出課表</div>
+    <div class="sb-item" data-p="finance" onclick="goPage(this)"><span class="sb-ico">💰</span>財務總覽</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-foot">
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/13　v49</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v53</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -662,6 +663,22 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         </div>
       </div>
     </div>
+    <div id="pg-finance" class="pg" style="display:none">
+      <div class="card">
+        <div class="ch">
+          <div class="ct"><div class="dot"></div>月份財務總覽</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="month" id="fin-month" style="font-size:.8rem;padding:4px 8px;border:1px solid var(--bdr);border-radius:6px" onchange="renderFinance()">
+            <button class="btn bg bsm" onclick="exportFinance()">📥 匯出</button>
+          </div>
+        </div>
+        <div class="cb" style="padding:0">
+          <div id="fin-summary" style="padding:12px"></div>
+        </div>
+      </div>
+      <!-- 明細 modal -->
+    </div>
+
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
     </div>
@@ -929,7 +946,7 @@ async function forgotPw(){
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={exportsch:'匯出課表',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+const TITLES={exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function updatePresence(page){
   if(!cur) return;
   const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
@@ -975,6 +992,11 @@ function goPage(el){
   if(p==='leave'){setupLeave();setTimeout(populateLeaveRecurring,500);}
   if(p==='sub')renderSub();
   if(p==='review')renderReview();
+  if(p==='finance'){
+    const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+    const fm=document.getElementById('fin-month');if(fm&&!fm.value)fm.value=y+'-'+m;
+    renderFinance();
+  }
   if(p==='exportsch'){const esel=document.getElementById('exsch-t');if(esel)esel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');const now2=new Date(),y2=now2.getFullYear(),m2=String(now2.getMonth()+1).padStart(2,'0'),ld=new Date(y2,now2.getMonth()+1,0).getDate();const ef=document.getElementById('exsch-from');if(ef)ef.value=y2+'-'+m2+'-01';const et=document.getElementById('exsch-to');if(et)et.value=y2+'-'+m2+'-'+String(ld).padStart(2,'0');}
   if(p==='history'){document.getElementById('hist-month').value=new Date().toISOString().slice(0,7);renderHistory();}
   if(p==='holidays'){
@@ -1234,11 +1256,13 @@ function renderMyCourses(){
     const jrnKey=`${c.src==='rec'?'rec':c.src==='spot'?'spot':'course'}_${c.id||''}_${c.date}_${c.start}`;
     const hasJournal=S.journals?.some(j=>j.key===jrnKey);
     const editBtn=(c.src==='spot'&&c.id)?`<button class="btn bg bxs" onclick="openEditSpot('${c.id}')">✏️</button>`:(c.src==='rec'&&c.id)?`<button class="btn bg bxs" onclick="openEditRecModal('${c.id}')">✏️</button>`:'';
+    // Delete button: spot→直接刪, rec→選擇單堂/之後/全部
+    const delBtn=(c.src==='spot'&&c.id)?`<button class="btn bdel bxs" onclick="safeDelete('spots','${c.id}','確定刪除這堂課？')" title="刪除">🗑</button>`:(c.src==='rec'&&c.id)?`<button class="btn bdel bxs" onclick="openDelRecChoice('${c.id}','${c.date}')" title="刪除">🗑</button>`:'';
     const jrnBtn=c.id?`<button class="btn ${hasJournal?'bok':'bg'} bxs" onclick="openMyCourseDetail('${c.src}','${c.id||''}','${c.date}','${c.start}')" title="${hasJournal?'已有日誌':'寫日誌'}">${hasJournal?'📝':'📄'}</button>`:'';
     // Quick cancel button - only for rec courses with a future date
     const isFuture=c.date>=new Date().toISOString().slice(0,10);
     const cancelBtn=(c.src==='rec'&&c.id&&isFuture)?`<button class="btn bdel bxs" onclick="quickCancelCourse('${c.id}','${c.date}','${c.start}')" title="申請停課">🚫</button>`:'';
-    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}${cancelBtn}</td></tr>`;
+    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}${cancelBtn}${delBtn}</td></tr>`;
   }).join('')+'</tbody></table>';
 }
 async function quickCancelCourse(recId, date, start){
@@ -1505,7 +1529,17 @@ function getEventsForDate(ds){
     else events.push({type:'rec',label:`${r.dept} ${r.branch} ${r.grade}`,tid:r.tid,start:r.start,end:r.end,srcId:r.id,srcCol:'recurring',r});
   });
   S.spots.forEach(s=>{if(s.date!==ds||!canSee(viewer,s.tid))return;if(isHoliday(ds,s.tid))return;events.push({type:'spot',label:`${s.dept} ${s.branch} ${s.grade}`,tid:s.tid,start:s.start,end:s.end,srcId:s.id,srcCol:'spots',s});});
-  S.requests.forEach(req=>{if(req.status==='rejected')return;req.sessions.forEach((s,si)=>{if(s.date!==ds||!canSee(viewer,req.tid))return;const tk=req.takers[si];if(tk)events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});else if(req.status==='approved')events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});});});
+  S.requests.forEach(req=>{
+    if(req.status==='rejected') return;
+    if(req.type==='cancel') return; // 停課：從行事曆移除課程，不產生新事件
+    req.sessions.forEach((s,si)=>{
+      if(s.date!==ds||!canSee(viewer,req.tid)) return;
+      const tk=req.takers[si];
+      if(tk) events.push({type:'take',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s,tk});
+      else if(req.status==='approved') events.push({type:'ok',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});
+      else events.push({type:'pend',label:`${s.dept} ${s.branch} ${s.grade}`,tid:req.tid,start:s.start,end:s.end,req,si,s});
+    });
+  });
   // Sort: current user's events first, then by start time
   return events.sort((a,b)=>{
     const aOwn = cur && a.tid===cur.id ? 0 : 1;
@@ -1898,6 +1932,17 @@ async function saveAdminEdit(){
   await logHistory('course','管理員修改課程：'+dept+branch+grade,ADMIN_ID);
   closeOv('ov-admin-edit');toast('✅ 已更新',true);
 }
+function openDelRecChoice(id, date){
+  // Open the delete choice modal for a specific date
+  window._delRecId = id;
+  window._delRecDs = date;
+  const r = S.recurring.find(x=>x.id===id);
+  if(r){
+    const infoEl = document.getElementById('del-rec-info');
+    if(infoEl) infoEl.textContent = r.dept+' '+r.branch+' '+r.grade+' '+r.start+'–'+r.end + (date?' ('+date+')':'');
+  }
+  openOv('ov-del-rec-choice');
+}
 function adminConfirmDelete(type,id){
   if(type==='rec'){
     openOv('ov-del-rec-choice');
@@ -2091,8 +2136,24 @@ function doExport(){
       return true;
     }).forEach(r=>{const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));if(!cancelled){sn++;rows.push([sn,ds,r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);}});S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>{sn++;rows.push([sn,ds,s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);});});
   if(!rows.length){toast('此期間無課程資料');return;}
-  const dataRow=6,totalRow=rows.length+dataRow;
-  const wsData=[['易學國文師資團隊 — 段數表','','','','','','','',''],['師資：'+tname,'','','','','','','',''],['期間：'+dates[0]+' ～ '+dates[dates.length-1],'','','','','','','',''],[], ['堂次','日期','班部（班部+分校）','年段','時間','鐘點費（元）','派師費（元）','講義費（元）','備注'],...rows,[],['','','','','合計','=SUM(F'+dataRow+':F'+(totalRow-1)+')','=SUM(G'+dataRow+':G'+(totalRow-1)+')','=SUM(H'+dataRow+':H'+(totalRow-1)+')','']];
+  // wsData structure:
+  // row 1: title, row 2: teacher, row 3: period, row 4: blank, row 5: header, row 6..N: data, row N+1: blank, row N+2: total
+  const dataStartRow = 6; // Excel row number where data starts (1-indexed)
+  const dataEndRow = rows.length + dataStartRow - 1; // last data row
+  const wsData=[
+    ['易學國文師資團隊 — 段數表','','','','','','','',''],
+    ['師資：'+tname,'','','','','','','',''],
+    ['期間：'+dates[0]+' ～ '+dates[dates.length-1],'','','','','','','',''],
+    [],
+    ['堂次','日期','班部（班部+分校）','年段','時間','鐘點費（元）','派師費（元）','講義費（元）','備注'],
+    ...rows,
+    [],
+    ['','','','','合計',
+      '=SUM(F'+dataStartRow+':F'+dataEndRow+')',
+      '=SUM(G'+dataStartRow+':G'+dataEndRow+')',
+      '=SUM(H'+dataStartRow+':H'+dataEndRow+')',
+      '']
+  ];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols']=[{wch:5},{wch:12},{wch:16},{wch:7},{wch:12},{wch:11},{wch:11},{wch:11},{wch:14}];
   ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}},{s:{r:2,c:0},e:{r:2,c:8}}];
@@ -2511,7 +2572,7 @@ window.renderHistory=renderHistory; window.logHistory=logHistory;
 window.openCancelRec=openCancelRec; window.submitCancelRec=submitCancelRec;
 window.openEditEvent=openEditEvent; window.saveEditEvent=saveEditEvent; window.removeEventTaker=removeEventTaker;
 window.adminOpenEdit=adminOpenEdit; window.saveAdminEdit=saveAdminEdit;
-window.adminConfirmDelete=adminConfirmDelete; window.deleteAdminEdit=deleteAdminEdit;
+window.adminConfirmDelete=adminConfirmDelete; window.openDelRecChoice=openDelRecChoice; window.deleteAdminEdit=deleteAdminEdit;
 window.delRecSingle=delRecSingle; window.delRecAll=delRecAll;
 window.quickAddCourse=quickAddCourse; window.saveQuickAdd=saveQuickAdd;
 window.openJournal=openJournal; window.saveJournal=saveJournal; window.renderJournals=renderJournals;
@@ -2538,6 +2599,199 @@ function updateMobNav(p){
     x.classList.toggle('on', x.dataset.p===p);
   });
 }
+
+// ── FINANCE ──
+function getMonthCourses(tid, month){
+  // Get all courses for a teacher in a given month (YYYY-MM)
+  const [y,m] = month.split('-').map(Number);
+  const daysInMonth = new Date(y,m,0).getDate();
+  const dates = Array.from({length:daysInMonth},(_,i)=>{
+    return y+'-'+String(m).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
+  });
+  const rows = [];
+  dates.forEach(ds=>{
+    const wd = new Date(ds).getDay();
+    // Admin courses
+    S.courses.filter(c=>c.tid===tid&&c.date===ds).forEach(c=>{
+      rows.push({date:ds,dept:c.dept,branch:c.branch,grade:c.grade,
+        start:c.start,end:c.end,fee:c.fee||0,ds:c.ds||0,lec:c.lec||0,src:'admin'});
+    });
+    // Spots
+    S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>{
+      rows.push({date:ds,dept:s.dept,branch:s.branch,grade:s.grade,
+        start:s.start,end:s.end,fee:s.fee||0,ds:s.ds||0,lec:s.lec||0,src:'spot'});
+    });
+    // Recurring
+    S.recurring.filter(r=>{
+      if(r.tid!==tid||r.wd!==wd) return false;
+      if(r.from&&ds<r.from) return false;
+      if(r.to&&ds>r.to) return false;
+      const freq=r.freq||'weekly';
+      if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return false;}
+      if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;
+      const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
+      return !cancelled&&!isHoliday(ds,tid,r.id);
+    }).forEach(r=>{
+      rows.push({date:ds,dept:r.dept,branch:r.branch,grade:r.grade,
+        start:r.start,end:r.end,fee:r.fee||0,ds:r.ds||0,lec:r.lec||0,src:'rec'});
+    });
+  });
+  return rows;
+}
+
+function renderFinance(){
+  const el=document.getElementById('fin-summary');if(!el)return;
+  const fm=document.getElementById('fin-month');
+  const month=fm?.value||(new Date().toFullYear?.())||new Date().toISOString().slice(0,7);
+  if(!month){el.innerHTML='<div class="empty">請選擇月份</div>';return;}
+
+  const teachers=S.teachers;
+  let totalSeg=0,totalFee=0,totalDs=0,totalLec=0;
+
+  const rows=teachers.map(t=>{
+    const courses=getMonthCourses(t.id,month);
+    const seg=courses.length;
+    const fee=courses.reduce((a,c)=>a+c.fee,0);
+    const ds=courses.reduce((a,c)=>a+c.ds,0);
+    const lec=courses.reduce((a,c)=>a+c.lec,0);
+    totalSeg+=seg; totalFee+=fee; totalDs+=ds; totalLec+=lec;
+    return {t,seg,fee,ds,lec,courses};
+  }).filter(r=>r.seg>0);
+
+  if(!rows.length){
+    el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">💰</div>本月無課程資料</div>';
+    return;
+  }
+
+  let h=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px;border-bottom:1px solid var(--bdr);margin-bottom:4px">
+    <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">總段數</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${totalSeg}</div>
+    </div>
+    <div style="background:rgba(16,185,129,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">鐘點費（老師收入）</div>
+      <div style="font-size:1.4rem;font-weight:700;color:#10b981">$${totalFee.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(37,99,235,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">派師費（易學收入）</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--blue)">$${totalDs.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(245,158,11,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">講義費</div>
+      <div style="font-size:1.4rem;font-weight:700;color:#f59e0b">$${totalLec.toLocaleString()}</div>
+    </div>
+  </div>`;
+
+  h+=`<table class="tbl" style="margin:0">
+    <thead><tr>
+      <th>師資</th><th style="text-align:center">段數</th>
+      <th style="text-align:right">鐘點費</th>
+      <th style="text-align:right">派師費</th>
+      <th style="text-align:right">講義費</th>
+      <th style="text-align:right">小計</th>
+      <th style="width:50px"></th>
+    </tr></thead>
+    <tbody>`;
+
+  rows.forEach((r,i)=>{
+    const total=r.fee+r.ds+r.lec;
+    h+=`<tr>
+      <td style="font-weight:600">${r.t.name}</td>
+      <td style="text-align:center">${r.seg}</td>
+      <td style="text-align:right">$${r.fee.toLocaleString()}</td>
+      <td style="text-align:right;color:var(--blue)">$${r.ds.toLocaleString()}</td>
+      <td style="text-align:right">$${r.lec.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">$${total.toLocaleString()}</td>
+      <td><button class="btn bg bxs" onclick="toggleFinDetail(${i})" id="fin-btn-${i}">展開</button></td>
+    </tr>
+    <tr id="fin-detail-${i}" style="display:none">
+      <td colspan="7" style="padding:0;background:var(--bg2)">
+        <table style="width:100%;border-collapse:collapse;font-size:.76rem">
+          <thead><tr style="background:var(--bg2)">
+            <th style="padding:6px 12px;text-align:left">日期</th>
+            <th style="padding:6px 8px;text-align:left">班部</th>
+            <th style="padding:6px 8px;text-align:left">年段</th>
+            <th style="padding:6px 8px;text-align:left">時間</th>
+            <th style="padding:6px 8px;text-align:right">鐘點</th>
+            <th style="padding:6px 8px;text-align:right">派師</th>
+            <th style="padding:6px 8px;text-align:right">講義</th>
+          </tr></thead>
+          <tbody>
+          ${r.courses.map(c=>`<tr style="border-top:1px solid var(--bdr)">
+            <td style="padding:5px 12px">${c.date}</td>
+            <td style="padding:5px 8px">${c.dept}${c.branch}</td>
+            <td style="padding:5px 8px">${c.grade}</td>
+            <td style="padding:5px 8px">${c.start}–${c.end}</td>
+            <td style="padding:5px 8px;text-align:right">$${c.fee}</td>
+            <td style="padding:5px 8px;text-align:right;color:var(--blue)">$${c.ds}</td>
+            <td style="padding:5px 8px;text-align:right">$${c.lec}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </td>
+    </tr>`;
+  });
+
+  h+=`<tr style="border-top:2px solid var(--bdr);font-weight:700;background:var(--bg2)">
+    <td>合計</td>
+    <td style="text-align:center">${totalSeg}</td>
+    <td style="text-align:right">$${totalFee.toLocaleString()}</td>
+    <td style="text-align:right;color:var(--blue)">$${totalDs.toLocaleString()}</td>
+    <td style="text-align:right">$${totalLec.toLocaleString()}</td>
+    <td style="text-align:right">$${(totalFee+totalDs+totalLec).toLocaleString()}</td>
+    <td></td>
+  </tr></tbody></table>`;
+
+  el.innerHTML=h;
+  // Store rows for export
+  window._finRows=rows;
+  window._finMonth=month;
+  window._finTotals={totalSeg,totalFee,totalDs,totalLec};
+}
+
+function toggleFinDetail(i){
+  const row=document.getElementById('fin-detail-'+i);
+  const btn=document.getElementById('fin-btn-'+i);
+  if(!row||!btn)return;
+  const isOpen=row.style.display!=='none';
+  row.style.display=isOpen?'none':'table-row';
+  btn.textContent=isOpen?'展開':'收起';
+}
+
+async function exportFinance(){
+  if(!window._finRows||!window._finMonth){toast('請先選擇月份');return;}
+  const rows=window._finRows,month=window._finMonth;
+  const {totalSeg,totalFee,totalDs,totalLec}=window._finTotals;
+  const wb=XLSX.utils.book_new();
+  // Summary sheet
+  const sumData=[
+    ['易學國文 月份財務總覽','','','','',''],
+    ['月份：'+month,'','','','',''],
+    [],
+    ['師資','段數','鐘點費（老師）','派師費（易學）','講義費','小計'],
+    ...rows.map(r=>[r.t.name,r.seg,r.fee,r.ds,r.lec,r.fee+r.ds+r.lec]),
+    [],
+    ['合計',totalSeg,totalFee,totalDs,totalLec,totalFee+totalDs+totalLec]
+  ];
+  const ws1=XLSX.utils.aoa_to_sheet(sumData);
+  ws1['!cols']=[{wch:8},{wch:6},{wch:14},{wch:14},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws1,'月份總表');
+  // Detail sheet
+  const detData=[
+    ['師資','日期','班部','分校','年段','時間','鐘點費','派師費','講義費'],
+    ...rows.flatMap(r=>r.courses.map(c=>[r.t.name,c.date,c.dept,c.branch,c.grade,c.start+'–'+c.end,c.fee,c.ds,c.lec]))
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(detData);
+  ws2['!cols']=[{wch:8},{wch:12},{wch:8},{wch:8},{wch:8},{wch:12},{wch:10},{wch:10},{wch:8}];
+  ws2['!autofilter']={ref:'A1:I1'};
+  XLSX.utils.book_append_sheet(wb,ws2,'課程明細');
+  XLSX.writeFile(wb,'易學國文_財務_'+month+'.xlsx');
+  toast('✅ 財務報表已匯出',true);
+}
+window.renderFinance=renderFinance;
+window.toggleFinDetail=toggleFinDetail;
+window.exportFinance=exportFinance;
+
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
 window.toggleRecCheck=toggleRecCheck;
