@@ -147,7 +147,7 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 .tab:hover{color:var(--navy);}
 
 /* ── MISC ── */
-.pg{display:none;}
+.content{flex:1;}.pg{display:none;}
 .pg.show{display:block;}
 .empty{text-align:center;padding:32px;color:var(--muted);}
 .ei{font-size:2rem;margin-bottom:8px;}
@@ -204,7 +204,7 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 /* ── MONTH CALENDAR ── */
 .mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--bdr);}
 .mdn{background:var(--navy);color:#fff;font-size:.7rem;font-weight:600;padding:7px 8px;text-align:center;}
-.mdc{background:var(--w);min-height:72px;padding:4px 6px;cursor:pointer;transition:background .1s;vertical-align:top;}
+.mdc{background:var(--w);min-height:90px;padding:4px 6px;cursor:pointer;transition:background .1s;vertical-align:top;}
 .mdc:hover{background:var(--blight);}
 .mdc.today{background:#eff6ff;}
 .mdc.other{background:#f8fafd;}
@@ -333,7 +333,7 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v62</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v63</div>
 </nav>
 <div class="main">
   
@@ -2622,7 +2622,8 @@ window.renderMyHolidays=renderMyHolidays; window.initMyHoliday=initMyHoliday; wi
 window.clearLeave=clearLeave; window.submitLeave=submitLeave; window.populateLeaveRecurring=populateLeaveRecurring;
 window.renderSub=renderSub; window.openTake=openTake; window.doTake=doTake;
 window.rvTab=rvTab; window.renderReview=renderReview; window.approve=approve; window.reject=reject; window.deleteRequest=deleteRequest;
-window.calStep=calStep; window.calToday=calToday; window.setView=setView; window.calDayNav=calDayNav; window.showDay=showDay; window.renderDay=renderDay; window.renderCal=renderCal; window.renderWeek=renderWeek; window.renderOverview=renderOverview;
+window.calStep=calStep; window.calToday=calToday; window.setView=setView; window.calDayNav=calDayNav;
+window.renderMonth=renderMonth; window.showDay=showDay; window.renderDay=renderDay; window.renderCal=renderCal; window.renderWeek=renderWeek; window.renderOverview=renderOverview;
 window.openExportModal=openExportModal; window.doExport=doExport;
 window.renderHistory=renderHistory; window.logHistory=logHistory;
 window.openCancelRec=openCancelRec; window.submitCancelRec=submitCancelRec;
