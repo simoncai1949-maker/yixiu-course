@@ -44,11 +44,12 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 
 /* ── LAYOUT ── */
 #app{display:none;height:100vh;flex-direction:column;}
+#app.show{display:flex;flex-direction:column;}
 #app.show{display:flex;}
 .topbar{height:50px;background:var(--w);border-bottom:1px solid rgba(13,34,64,.08);padding:0 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .tb-title{font-family:'Noto Serif TC',serif;font-size:.95rem;font-weight:700;color:var(--navy);}
 .tb-right{display:flex;align-items:center;gap:8px;}
-.body{display:flex;flex:1;overflow:hidden;}
+.body{display:flex;flex:1;overflow:hidden;min-height:0;}
 .main{flex:1;overflow-y:auto;background:#f2f5fa;padding:20px;}
 
 /* ── SIDEBAR ── */
@@ -67,8 +68,8 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 .sb-item.on::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:#60a5fa;border-radius:0 3px 3px 0;}
 .sb-ico{font-size:.88rem;width:18px;text-align:center;flex-shrink:0;}
 .sb-foot{padding:10px 16px;border-top:1px solid rgba(255,255,255,.07);margin-top:auto;}
-.sb-logout{font-size:.75rem;color:rgba(255,255,255,.45);cursor:pointer;padding:6px 8px;border-radius:6px;transition:all .12s;display:flex;align-items:center;gap:6px;}
-.sb-logout:hover{color:rgba(255,255,255,.75);background:rgba(255,255,255,.07);}
+.sb-logout{font-size:.75rem;color:rgba(255,255,255,.5);cursor:pointer;padding:7px 12px;border-radius:7px;transition:all .12s;display:flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.12);margin:0 6px;}
+.sb-logout:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);}
 
 /* ── CARDS ── */
 .card{background:var(--w);border-radius:var(--rl);border:1px solid rgba(13,34,64,.07);box-shadow:var(--sh);margin-bottom:14px;}
@@ -232,6 +233,11 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 </div>
 
 <div id="app">
+<div class="topbar">
+    <div class="tb-title" id="pg-title">行事曆總覽</div>
+    <div id="pg-acts" style="display:flex;gap:6px;align-items:center"></div>
+  </div>
+<div class="body">
 <nav class="sb">
   <div class="sb-brand">
     <div class="sb-logo"><div style="font-family:'Noto Serif TC',serif;font-size:1.15rem;font-weight:700;color:#fff;letter-spacing:3px;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.3)">易學國文</div></div>
@@ -281,23 +287,8 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v58</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v60</div>
 </nav>
-<!-- Mobile Bottom Navigation -->
-<div class="mob-nav" id="mob-nav">
-  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
-  <div class="mob-nav-item" data-p="mycourses" onclick="mobNav(this)"><div class="mni">📖</div>我的課</div>
-  <div class="mob-nav-item" data-p="newcourse" onclick="mobNav(this)"><div class="mni">➕</div>新增</div>
-  <div class="mob-nav-item" data-p="leave" onclick="mobNav(this)"><div class="mni">📝</div>申請</div>
-  <div class="mob-nav-item" data-p="sub" onclick="mobNav(this)"><div class="mni">🔄</div>代課</div>
-</div>
-<div class="mob-nav" id="mob-nav-adm" style="display:none">
-  <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
-  <div class="mob-nav-item" data-p="schedule" onclick="mobNav(this)"><div class="mni">📋</div>課表</div>
-  <div class="mob-nav-item" data-p="review" onclick="mobNav(this)"><div class="mni">✅</div>審核</div>
-  <div class="mob-nav-item" data-p="teachers" onclick="mobNav(this)"><div class="mni">👤</div>師資</div>
-  <div class="mob-nav-item" data-p="history" onclick="mobNav(this)"><div class="mni">📜</div>紀錄</div>
-</div>
 <div class="main">
   <div class="topbar">
     <div class="tb-title" id="pg-title">行事曆總覽</div>
@@ -703,6 +694,8 @@ body{font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--txt);bac
 </div>
 </div>
 
+</div>
+
 <!-- MODALS -->
 <div class="ov" id="ov-day"><div class="modal" style="max-width:520px"><div class="mh"><div class="mht" id="day-title">課程詳情</div><button class="mcls" onclick="closeOv('ov-day')">✕</button></div><div class="mb" id="day-body"></div></div></div>
 <div class="ov" id="ov-cancel-rec">
@@ -935,7 +928,7 @@ function enterApp(){
   const sp=document.getElementById('splash');
   if(sp){sp.classList.add('hide');setTimeout(()=>{sp.style.display='none';},450);}
   document.getElementById('login-screen').classList.remove('show');
-  document.getElementById('app').classList.add('show');
+  const appEl=document.getElementById('app');appEl.style.display='flex';appEl.classList.add('show');
   document.getElementById('sb-av').textContent=cur.name.slice(0,1);
   document.getElementById('sb-un').textContent=cur.name;
   document.getElementById('sb-ur').textContent=isAdm()?'管理員（易學國文）':'教師';
