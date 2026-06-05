@@ -267,7 +267,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v64</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v65</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -682,28 +682,57 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
 
     <div id="pg-materials" class="pg" style="display:none">
-      <!-- 教師視角：庫存總覽 + 申請 -->
+
+      <!-- ══ 教師視角 ══ -->
       <div id="mat-teacher-view">
         <div class="card">
-          <div class="ch">
-            <div class="ct"><div class="dot"></div>講義庫存</div>
-            <button class="btn bn bsm" onclick="openMatApply()">📝 申請增減</button>
-          </div>
+          <div class="ch"><div class="ct"><div class="dot"></div>目前庫存</div></div>
           <div class="cb" style="padding:0">
             <div id="mat-list"></div>
           </div>
         </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct"><div class="dot"></div>取出 / 放入申請</div></div>
+          <div class="cb">
+            <div class="gr g2">
+              <div class="fg">
+                <label>講義名稱</label>
+                <input type="text" id="mat-req-name" placeholder="輸入講義名稱">
+              </div>
+              <div class="fg">
+                <label>數量（本）</label>
+                <input type="number" id="mat-req-qty" min="1" value="1">
+              </div>
+            </div>
+            <div class="fg">
+              <label>說明（選填）</label>
+              <input type="text" id="mat-req-note" placeholder="例：帶去竹東班使用">
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button class="btn bn" style="flex:1;padding:10px;font-size:.88rem" onclick="submitMatRequest('out')">
+                📤 取出
+              </button>
+              <button class="btn bg" style="flex:1;padding:10px;font-size:.88rem;border:1.5px solid var(--bdr2)" onclick="submitMatRequest('in')">
+                📥 放入
+              </button>
+            </div>
+            <div class="notice" style="margin-top:10px">送出後等管理員審核，核准後庫存才會正式異動。</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="ch"><div class="ct"><div class="dot"></div>我的申請紀錄</div></div>
           <div class="cb" style="padding:0"><div id="mat-my-requests"></div></div>
         </div>
       </div>
-      <!-- 管理員視角：庫存管理 + 審核 -->
+
+      <!-- ══ 管理員視角 ══ -->
       <div id="mat-admin-view" style="display:none">
         <div class="card">
           <div class="ch">
             <div class="ct"><div class="dot"></div>講義庫存管理</div>
-            <button class="btn bn bsm" onclick="openOv('ov-mat-add')">➕ 新增品項</button>
+            <button class="btn bn bsm" onclick="openAddMaterial()">➕ 新增品項</button>
           </div>
           <div class="cb" style="padding:0">
             <div id="mat-admin-list"></div>
@@ -715,7 +744,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         </div>
       </div>
     </div>
-
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
     </div>
@@ -811,33 +839,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
         <button class="btn bg" onclick="closeOv('ov-mat-add')">取消</button>
         <button class="btn bn" onclick="saveMaterial()">儲存</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 老師申請增減 -->
-<div class="ov" id="ov-mat-apply">
-  <div class="modal" style="max-width:420px">
-    <div class="mh"><div class="mht">📝 講義數量增減申請</div><button class="mcls" onclick="closeOv('ov-mat-apply')">✕</button></div>
-    <div class="mb">
-      <div class="fg">
-        <label>講義品項</label>
-        <select id="mat-apply-item"></select>
-      </div>
-      <div class="fg">
-        <label>異動類型</label>
-        <select id="mat-apply-type">
-          <option value="out">📤 拿走（庫存減少）</option>
-          <option value="in">📥 歸還（庫存增加）</option>
-        </select>
-      </div>
-      <div class="fg"><label>數量（本）</label><input type="number" id="mat-apply-qty" min="1" value="1"></div>
-      <div class="fg"><label>說明（選填）</label><input type="text" id="mat-apply-note" placeholder="例：帶去某班使用"></div>
-      <div class="notice" style="margin-top:4px">申請後須等管理員審核，審核通過後庫存才會異動。</div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
-        <button class="btn bg" onclick="closeOv('ov-mat-apply')">取消</button>
-        <button class="btn bn" onclick="submitMatRequest()">送出申請</button>
       </div>
     </div>
   </div>
@@ -2930,9 +2931,9 @@ function renderMyMatRequests(){
   const statusC = {pending:'color:#f59e0b', approved:'color:#10b981', rejected:'color:#ef4444'};
   el.innerHTML = '<table class="tbl"><thead><tr><th>講義</th><th>異動</th><th>數量</th><th>說明</th><th>狀態</th></tr></thead><tbody>' +
     reqs.map(r => {
-      const mat = (S.materials||[]).find(m=>m.id===r.matId);
+      const matName = r.matName || (S.materials||[]).find(m=>m.id===r.matId)?.name || '—';
       return `<tr>
-        <td>${mat?.name||'—'}</td>
+        <td>${matName}</td>
         <td>${r.type==='out'?'📤 拿走':'📥 歸還'}</td>
         <td style="text-align:center">${r.qty} 本</td>
         <td style="color:var(--muted);font-size:.78rem">${r.note||'—'}</td>
@@ -2971,14 +2972,15 @@ function renderMatReview(){
   }
   el.innerHTML = '<div style="padding:8px">' +
     pending.map(r => {
-      const mat = (S.materials||[]).find(m=>m.id===r.matId);
+      const mat = (S.materials||[]).find(m=>m.id===r.matId||(m.name===r.matName));
+      const matName = r.matName || mat?.name || '—';
       const teacher = S.teachers.find(t=>t.id===r.tid);
       return `<div class="ri">
         <div class="rmeta">
           <div>
             <div class="rwho">${teacher?.name||'—'} <span style="font-weight:400;color:var(--muted);font-size:.78rem">${r.type==='out'?'📤 拿走':'📥 歸還'} ${r.qty} 本</span></div>
             <div style="font-size:.78rem;color:var(--muted);margin-top:3px">
-              📚 ${mat?.name||'—'}　現有庫存：${mat?.qty||0} 本
+              📚 ${matName}　${mat?'現有庫存：'+mat.qty+' 本':'（新品項）'}
               ${r.note?'　說明：'+r.note:''}
             </div>
             <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${r.at.slice(0,16).replace('T',' ')}</div>
@@ -3044,35 +3046,52 @@ function openMatApply(){
 }
 
 // 老師送出申請
-async function submitMatRequest(){
-  const matId = document.getElementById('mat-apply-item')?.value;
-  const type = document.getElementById('mat-apply-type')?.value;
-  const qty = parseInt(document.getElementById('mat-apply-qty')?.value)||0;
-  const note = document.getElementById('mat-apply-note')?.value.trim();
-  if(!matId){toast('請選擇講義品項');return;}
-  if(qty <= 0){toast('數量至少為 1');return;}
-  const mat = (S.materials||[]).find(m=>m.id===matId);
-  if(type==='out' && (mat?.qty||0) < qty){
-    toast('庫存不足，目前剩 '+(mat?.qty||0)+' 本');return;
+async function submitMatRequest(type){
+  const name = document.getElementById('mat-req-name')?.value.trim();
+  const qty = parseInt(document.getElementById('mat-req-qty')?.value)||0;
+  const note = document.getElementById('mat-req-note')?.value.trim();
+  if(!name){ toast('請填寫講義名稱'); return; }
+  if(qty <= 0){ toast('數量至少為 1'); return; }
+  // 找有沒有對應品項（用名稱比對）
+  const mat = (S.materials||[]).find(m=>m.name===name);
+  if(type==='out' && mat && (mat.qty||0) < qty){
+    toast('庫存不足，目前「'+name+'」剩 '+(mat.qty||0)+' 本');
+    return;
   }
-  await fsAdd('matRequests',{tid:cur.id,matId,type,qty,note,status:'pending',at:new Date().toISOString()});
-  toast('✅ 申請已送出，等待審核',true);
-  closeOv('ov-mat-apply');
+  await fsAdd('matRequests',{
+    tid: cur.id,
+    matId: mat?.id||null,
+    matName: name,
+    type, qty, note,
+    status: 'pending',
+    at: new Date().toISOString()
+  });
+  toast('✅ 申請已送出，等待審核', true);
+  document.getElementById('mat-req-name').value='';
+  document.getElementById('mat-req-qty').value='1';
+  document.getElementById('mat-req-note').value='';
   renderMyMatRequests();
 }
 
 // 管理員核准
 async function approveMatRequest(id){
   const req = (S.matRequests||[]).find(r=>r.id===id);
-  if(!req) return;
-  const mat = (S.materials||[]).find(m=>m.id===req.matId);
-  if(!mat){toast('找不到品項');return;}
-  const newQty = req.type==='out' ? (mat.qty||0)-req.qty : (mat.qty||0)+req.qty;
-  if(newQty < 0){toast('庫存不足，無法核准');return;}
-  await fsUpdate('materials', req.matId, {qty: newQty, updatedAt: new Date().toISOString()});
-  await fsUpdate('matRequests', id, {status:'approved', reviewedAt: new Date().toISOString()});
-  await logHistory('material', (req.type==='out'?'拿走':'歸還')+'講義 '+req.qty+'本：'+mat.name, req.tid);
-  toast('✅ 已核准，庫存已更新',true);
+  if(!req){ toast('找不到申請'); return; }
+  let mat = (S.materials||[]).find(m=>m.id===req.matId) ||
+             (S.materials||[]).find(m=>m.name===req.matName);
+  if(!mat){
+    // 品項不存在 → 自動建立（放入才建立，取出不能）
+    if(req.type==='out'){ toast('找不到品項「'+req.matName+'」，無法核准取出'); return; }
+    const newId = await fsAdd('materials',{name:req.matName, qty:req.qty, note:'', createdAt:new Date().toISOString()});
+    toast('✅ 已核准，並自動建立新品項「'+req.matName+'」', true);
+  } else {
+    const newQty = req.type==='out' ? (mat.qty||0)-req.qty : (mat.qty||0)+req.qty;
+    if(newQty < 0){ toast('庫存不足（剩 '+mat.qty+' 本），無法核准'); return; }
+    await fsUpdate('materials', mat.id, {qty:newQty, updatedAt:new Date().toISOString()});
+    toast('✅ 已核准，庫存已更新', true);
+  }
+  await fsUpdate('matRequests', id, {status:'approved', reviewedAt:new Date().toISOString()});
+  await logHistory('material', (req.type==='out'?'取出':'放入')+'講義 '+req.qty+'本：'+req.matName, req.tid);
   renderMatAdminList();
   renderMatReview();
 }
@@ -3088,7 +3107,6 @@ window.renderMaterials=renderMaterials;
 window.openAddMaterial=openAddMaterial;
 window.openEditMaterial=openEditMaterial;
 window.saveMaterial=saveMaterial;
-window.openMatApply=openMatApply;
 window.submitMatRequest=submitMatRequest;
 window.approveMatRequest=approveMatRequest;
 window.rejectMatRequest=rejectMatRequest;
