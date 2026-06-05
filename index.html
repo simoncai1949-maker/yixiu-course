@@ -241,6 +241,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="sub" onclick="goPage(this)"><span class="sb-ico">🔄</span>代課接課</div>
     <div class="sb-item" data-p="history" id="nav-history-t" onclick="goPage(this)" style="display:none"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📝</span>教師日誌</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📚</span>講義庫存</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-sec" id="nav-a" style="display:none">
@@ -259,13 +260,14 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="history" onclick="goPage(this)"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="exportsch" onclick="goPage(this)"><span class="sb-ico">📊</span>匯出課表</div>
     <div class="sb-item" data-p="finance" onclick="goPage(this)"><span class="sb-ico">💰</span>財務總覽</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📚</span>講義庫存</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-foot">
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/05/29　v53</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v64</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -679,6 +681,41 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <!-- 明細 modal -->
     </div>
 
+    <div id="pg-materials" class="pg" style="display:none">
+      <!-- 教師視角：庫存總覽 + 申請 -->
+      <div id="mat-teacher-view">
+        <div class="card">
+          <div class="ch">
+            <div class="ct"><div class="dot"></div>講義庫存</div>
+            <button class="btn bn bsm" onclick="openMatApply()">📝 申請增減</button>
+          </div>
+          <div class="cb" style="padding:0">
+            <div id="mat-list"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct"><div class="dot"></div>我的申請紀錄</div></div>
+          <div class="cb" style="padding:0"><div id="mat-my-requests"></div></div>
+        </div>
+      </div>
+      <!-- 管理員視角：庫存管理 + 審核 -->
+      <div id="mat-admin-view" style="display:none">
+        <div class="card">
+          <div class="ch">
+            <div class="ct"><div class="dot"></div>講義庫存管理</div>
+            <button class="btn bn bsm" onclick="openOv('ov-mat-add')">➕ 新增品項</button>
+          </div>
+          <div class="cb" style="padding:0">
+            <div id="mat-admin-list"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct"><div class="dot"></div>待審核申請</div></div>
+          <div class="cb" style="padding:0"><div id="mat-review-list"></div></div>
+        </div>
+      </div>
+    </div>
+
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
     </div>
@@ -762,6 +799,50 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
   </div>
 </div>
+<!-- 新增/編輯講義品項 -->
+<div class="ov" id="ov-mat-add">
+  <div class="modal" style="max-width:400px">
+    <div class="mh"><div class="mht" id="mat-add-title">➕ 新增講義品項</div><button class="mcls" onclick="closeOv('ov-mat-add')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="mat-edit-id">
+      <div class="fg"><label>講義名稱</label><input type="text" id="mat-name" placeholder="例：國七上冊講義"></div>
+      <div class="fg"><label>數量（本）</label><input type="number" id="mat-qty" min="0" placeholder="0"></div>
+      <div class="fg"><label>備註（選填）</label><input type="text" id="mat-note" placeholder="說明、版本等"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+        <button class="btn bg" onclick="closeOv('ov-mat-add')">取消</button>
+        <button class="btn bn" onclick="saveMaterial()">儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 老師申請增減 -->
+<div class="ov" id="ov-mat-apply">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><div class="mht">📝 講義數量增減申請</div><button class="mcls" onclick="closeOv('ov-mat-apply')">✕</button></div>
+    <div class="mb">
+      <div class="fg">
+        <label>講義品項</label>
+        <select id="mat-apply-item"></select>
+      </div>
+      <div class="fg">
+        <label>異動類型</label>
+        <select id="mat-apply-type">
+          <option value="out">📤 拿走（庫存減少）</option>
+          <option value="in">📥 歸還（庫存增加）</option>
+        </select>
+      </div>
+      <div class="fg"><label>數量（本）</label><input type="number" id="mat-apply-qty" min="1" value="1"></div>
+      <div class="fg"><label>說明（選填）</label><input type="text" id="mat-apply-note" placeholder="例：帶去某班使用"></div>
+      <div class="notice" style="margin-top:4px">申請後須等管理員審核，審核通過後庫存才會異動。</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button class="btn bg" onclick="closeOv('ov-mat-apply')">取消</button>
+        <button class="btn bn" onclick="submitMatRequest()">送出申請</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -780,7 +861,7 @@ const db = getFirestore(app);
 
 const ADMIN_PW = 'alex8888@';
 const ADMIN_ID = 'admin';
-let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[], presence:[], messages:[] };
+let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[], presence:[], messages:[], materials:[], matRequests:[] };
 let cur = null;
 let unsubscribers = [];
 
@@ -821,7 +902,7 @@ function safeDelete(col, id, confirmMsg) {
 
 function setupListeners() {
   unsubscribers.forEach(u=>u()); unsubscribers=[];
-  ['teachers','courses','recurring','spots','requests','history','journals','holidays','presence','messages'].forEach(col=>{
+  ['teachers','courses','recurring','spots','requests','history','journals','holidays','presence','messages','materials','matRequests'].forEach(col=>{
     const unsub=onSnapshot(collection(db,col), snap=>{
       S[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
       setSyncStatus('ok'); refreshPage();
@@ -846,7 +927,7 @@ function refreshPage() {
   else if(p==='history') renderHistory();
   else if(p==='journals') renderJournals();
   else if(p==='leave') populateLeaveRecurring();
-  fillSel(); popLoginSel(); renderPresence(); if(_dmTarget&&document.getElementById('ov-dm')?.classList.contains('open'))renderDmMessages();
+  fillSel(); popLoginSel(); renderPresence(); if(document.getElementById('pg-materials')?.style.display!=='none')renderMaterials(); if(_dmTarget&&document.getElementById('ov-dm')?.classList.contains('open'))renderDmMessages();
 }
 
 window.addEventListener('load', ()=>{
@@ -946,7 +1027,7 @@ async function forgotPw(){
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+const TITLES={materials:'講義庫存',exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function updatePresence(page){
   if(!cur) return;
   const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
@@ -996,6 +1077,9 @@ function goPage(el){
     const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
     const fm=document.getElementById('fin-month');if(fm&&!fm.value)fm.value=y+'-'+m;
     renderFinance();
+  }
+  if(p==='materials'){
+    renderMaterials();
   }
   if(p==='exportsch'){const esel=document.getElementById('exsch-t');if(esel)esel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');const now2=new Date(),y2=now2.getFullYear(),m2=String(now2.getMonth()+1).padStart(2,'0'),ld=new Date(y2,now2.getMonth()+1,0).getDate();const ef=document.getElementById('exsch-from');if(ef)ef.value=y2+'-'+m2+'-01';const et=document.getElementById('exsch-to');if(et)et.value=y2+'-'+m2+'-'+String(ld).padStart(2,'0');}
   if(p==='history'){document.getElementById('hist-month').value=new Date().toISOString().slice(0,7);renderHistory();}
@@ -2791,6 +2875,225 @@ async function exportFinance(){
 window.renderFinance=renderFinance;
 window.toggleFinDetail=toggleFinDetail;
 window.exportFinance=exportFinance;
+
+
+// ══════════════════════════════════════
+// 講義庫存系統
+// ══════════════════════════════════════
+
+function renderMaterials(){
+  // 切換教師/管理員視角
+  const tv = document.getElementById('mat-teacher-view');
+  const av = document.getElementById('mat-admin-view');
+  if(isAdm()){
+    if(tv) tv.style.display='none';
+    if(av) av.style.display='block';
+    renderMatAdminList();
+    renderMatReview();
+  } else {
+    if(tv) tv.style.display='block';
+    if(av) av.style.display='none';
+    renderMatList();
+    renderMyMatRequests();
+  }
+}
+
+// 教師：庫存列表
+function renderMatList(){
+  const el = document.getElementById('mat-list'); if(!el) return;
+  const mats = S.materials || [];
+  if(!mats.length){
+    el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">📚</div>目前尚無講義品項</div>';
+    return;
+  }
+  el.innerHTML = '<table class="tbl"><thead><tr><th>講義名稱</th><th style="text-align:center">剩餘數量</th><th>備註</th></tr></thead><tbody>' +
+    mats.map(m => {
+      const qty = m.qty || 0;
+      const qtyColor = qty <= 5 ? 'color:#ef4444;font-weight:700' : qty <= 20 ? 'color:#f59e0b;font-weight:600' : 'color:#10b981;font-weight:600';
+      return `<tr>
+        <td style="font-weight:500">${m.name}</td>
+        <td style="text-align:center"><span style="${qtyColor}">${qty}</span> 本</td>
+        <td style="color:var(--muted);font-size:.78rem">${m.note||'—'}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+// 教師：我的申請紀錄
+function renderMyMatRequests(){
+  const el = document.getElementById('mat-my-requests'); if(!el) return;
+  const reqs = (S.matRequests||[]).filter(r=>r.tid===cur.id).sort((a,b)=>b.at.localeCompare(a.at));
+  if(!reqs.length){
+    el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📋</div>尚無申請紀錄</div>';
+    return;
+  }
+  const statusL = {pending:'⏳ 待審核', approved:'✅ 已核准', rejected:'❌ 已退回'};
+  const statusC = {pending:'color:#f59e0b', approved:'color:#10b981', rejected:'color:#ef4444'};
+  el.innerHTML = '<table class="tbl"><thead><tr><th>講義</th><th>異動</th><th>數量</th><th>說明</th><th>狀態</th></tr></thead><tbody>' +
+    reqs.map(r => {
+      const mat = (S.materials||[]).find(m=>m.id===r.matId);
+      return `<tr>
+        <td>${mat?.name||'—'}</td>
+        <td>${r.type==='out'?'📤 拿走':'📥 歸還'}</td>
+        <td style="text-align:center">${r.qty} 本</td>
+        <td style="color:var(--muted);font-size:.78rem">${r.note||'—'}</td>
+        <td style="font-size:.78rem;font-weight:600;${statusC[r.status]||''}">${statusL[r.status]||r.status}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+// 管理員：庫存管理列表
+function renderMatAdminList(){
+  const el = document.getElementById('mat-admin-list'); if(!el) return;
+  const mats = S.materials || [];
+  if(!mats.length){
+    el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">📚</div>尚無品項，請點「新增品項」</div>';
+    return;
+  }
+  el.innerHTML = '<table class="tbl"><thead><tr><th>講義名稱</th><th style="text-align:center">數量</th><th>備註</th><th style="width:100px"></th></tr></thead><tbody>' +
+    mats.map(m => `<tr>
+      <td style="font-weight:500">${m.name}</td>
+      <td style="text-align:center;font-weight:600">${m.qty||0} 本</td>
+      <td style="color:var(--muted);font-size:.78rem">${m.note||'—'}</td>
+      <td style="display:flex;gap:4px;padding:6px">
+        <button class="btn bg bxs" onclick="openEditMaterial('${m.id}')">✏️</button>
+        <button class="btn bdel bxs" onclick="safeDelete('materials','${m.id}','確定刪除「${m.name}」？')">🗑</button>
+      </td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+// 管理員：待審核申請
+function renderMatReview(){
+  const el = document.getElementById('mat-review-list'); if(!el) return;
+  const pending = (S.matRequests||[]).filter(r=>r.status==='pending').sort((a,b)=>a.at.localeCompare(b.at));
+  if(!pending.length){
+    el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">✅</div>目前沒有待審核申請</div>';
+    return;
+  }
+  el.innerHTML = '<div style="padding:8px">' +
+    pending.map(r => {
+      const mat = (S.materials||[]).find(m=>m.id===r.matId);
+      const teacher = S.teachers.find(t=>t.id===r.tid);
+      return `<div class="ri">
+        <div class="rmeta">
+          <div>
+            <div class="rwho">${teacher?.name||'—'} <span style="font-weight:400;color:var(--muted);font-size:.78rem">${r.type==='out'?'📤 拿走':'📥 歸還'} ${r.qty} 本</span></div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:3px">
+              📚 ${mat?.name||'—'}　現有庫存：${mat?.qty||0} 本
+              ${r.note?'　說明：'+r.note:''}
+            </div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${r.at.slice(0,16).replace('T',' ')}</div>
+          </div>
+          <div class="racts">
+            <button class="btn bok bsm" onclick="approveMatRequest('${r.id}')">✅ 核准</button>
+            <button class="btn bdel bsm" onclick="rejectMatRequest('${r.id}')">❌ 退回</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+// 開啟新增品項 modal
+function openAddMaterial(){
+  document.getElementById('mat-edit-id').value='';
+  document.getElementById('mat-name').value='';
+  document.getElementById('mat-qty').value='';
+  document.getElementById('mat-note').value='';
+  document.getElementById('mat-add-title').textContent='➕ 新增講義品項';
+  openOv('ov-mat-add');
+}
+
+// 開啟編輯品項 modal
+function openEditMaterial(id){
+  const m = (S.materials||[]).find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('mat-edit-id').value = id;
+  document.getElementById('mat-name').value = m.name||'';
+  document.getElementById('mat-qty').value = m.qty||0;
+  document.getElementById('mat-note').value = m.note||'';
+  document.getElementById('mat-add-title').textContent='✏️ 編輯講義品項';
+  openOv('ov-mat-add');
+}
+
+// 儲存品項（新增或編輯）
+async function saveMaterial(){
+  const name = document.getElementById('mat-name')?.value.trim();
+  const qty = parseInt(document.getElementById('mat-qty')?.value)||0;
+  const note = document.getElementById('mat-note')?.value.trim();
+  const editId = document.getElementById('mat-edit-id')?.value;
+  if(!name){toast('請填寫講義名稱');return;}
+  if(qty < 0){toast('數量不能為負數');return;}
+  if(editId){
+    await fsUpdate('materials', editId, {name, qty, note, updatedAt: new Date().toISOString()});
+    toast('✅ 已更新品項',true);
+  } else {
+    await fsAdd('materials', {name, qty, note, createdAt: new Date().toISOString()});
+    toast('✅ 已新增品項',true);
+  }
+  closeOv('ov-mat-add');
+  renderMatAdminList();
+}
+
+// 老師開啟申請 modal
+function openMatApply(){
+  const sel = document.getElementById('mat-apply-item');
+  if(!sel) return;
+  sel.innerHTML = (S.materials||[]).map(m=>`<option value="${m.id}">${m.name}（剩 ${m.qty||0} 本）</option>`).join('');
+  document.getElementById('mat-apply-qty').value = 1;
+  document.getElementById('mat-apply-note').value = '';
+  openOv('ov-mat-apply');
+}
+
+// 老師送出申請
+async function submitMatRequest(){
+  const matId = document.getElementById('mat-apply-item')?.value;
+  const type = document.getElementById('mat-apply-type')?.value;
+  const qty = parseInt(document.getElementById('mat-apply-qty')?.value)||0;
+  const note = document.getElementById('mat-apply-note')?.value.trim();
+  if(!matId){toast('請選擇講義品項');return;}
+  if(qty <= 0){toast('數量至少為 1');return;}
+  const mat = (S.materials||[]).find(m=>m.id===matId);
+  if(type==='out' && (mat?.qty||0) < qty){
+    toast('庫存不足，目前剩 '+(mat?.qty||0)+' 本');return;
+  }
+  await fsAdd('matRequests',{tid:cur.id,matId,type,qty,note,status:'pending',at:new Date().toISOString()});
+  toast('✅ 申請已送出，等待審核',true);
+  closeOv('ov-mat-apply');
+  renderMyMatRequests();
+}
+
+// 管理員核准
+async function approveMatRequest(id){
+  const req = (S.matRequests||[]).find(r=>r.id===id);
+  if(!req) return;
+  const mat = (S.materials||[]).find(m=>m.id===req.matId);
+  if(!mat){toast('找不到品項');return;}
+  const newQty = req.type==='out' ? (mat.qty||0)-req.qty : (mat.qty||0)+req.qty;
+  if(newQty < 0){toast('庫存不足，無法核准');return;}
+  await fsUpdate('materials', req.matId, {qty: newQty, updatedAt: new Date().toISOString()});
+  await fsUpdate('matRequests', id, {status:'approved', reviewedAt: new Date().toISOString()});
+  await logHistory('material', (req.type==='out'?'拿走':'歸還')+'講義 '+req.qty+'本：'+mat.name, req.tid);
+  toast('✅ 已核准，庫存已更新',true);
+  renderMatAdminList();
+  renderMatReview();
+}
+
+// 管理員退回
+async function rejectMatRequest(id){
+  await fsUpdate('matRequests', id, {status:'rejected', reviewedAt: new Date().toISOString()});
+  toast('已退回申請');
+  renderMatReview();
+}
+
+window.renderMaterials=renderMaterials;
+window.openAddMaterial=openAddMaterial;
+window.openEditMaterial=openEditMaterial;
+window.saveMaterial=saveMaterial;
+window.openMatApply=openMatApply;
+window.submitMatRequest=submitMatRequest;
+window.approveMatRequest=approveMatRequest;
+window.rejectMatRequest=rejectMatRequest;
+window.renderMatAdminList=renderMatAdminList;
+window.renderMatReview=renderMatReview;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
