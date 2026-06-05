@@ -229,20 +229,30 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-lbl">行事曆</div>
     <div class="sb-item on" data-p="cal" onclick="goPage(this)"><span class="sb-ico">📅</span>行事曆總覽</div>
   </div>
+  <div class="sb-sec" id="nav-materials-a">
+    <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📦</span>講義庫存系統</div>
+  </div>
   <div class="sb-sec" id="presence-section" style="border-top:1px solid rgba(255,255,255,.07);padding:4px 0">
     <div class="sb-lbl">在線上</div>
     <div id="presence-list"></div>
   </div>
   <div class="sb-sec" id="nav-t">
-    <div class="sb-lbl">我的課程</div>
+    <div class="sb-lbl">行事曆</div>
+    <div class="sb-item" data-p="cal" onclick="goPage(this)"><span class="sb-ico">📅</span>行事曆總覽</div>
     <div class="sb-item" data-p="mycourses" onclick="goPage(this)"><span class="sb-ico">📖</span>我的課表</div>
     <div class="sb-item" data-p="newcourse" onclick="goPage(this)"><span class="sb-ico">➕</span>新增課程</div>
+    <div class="sb-lbl" style="margin-top:6px">申請 &amp; 代課</div>
     <div class="sb-item" data-p="leave" onclick="goPage(this)"><span class="sb-ico">📝</span>提出申請</div>
     <div class="sb-item" data-p="sub" onclick="goPage(this)"><span class="sb-ico">🔄</span>代課接課</div>
+    <div class="sb-lbl" style="margin-top:6px">其他</div>
+    <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📓</span>教師日誌</div>
     <div class="sb-item" data-p="history" id="nav-history-t" onclick="goPage(this)" style="display:none"><span class="sb-ico">📜</span>歷史紀錄</div>
-    <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📝</span>教師日誌</div>
-    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📚</span>講義庫存</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
+  </div>
+  <div class="sb-sec" id="nav-materials-t">
+    <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📦</span>講義庫存系統</div>
   </div>
   <div class="sb-sec" id="nav-a" style="display:none">
     <div class="sb-lbl">行事曆 &amp; 課程</div>
@@ -260,14 +270,13 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="history" onclick="goPage(this)"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="exportsch" onclick="goPage(this)"><span class="sb-ico">📊</span>匯出課表</div>
     <div class="sb-item" data-p="finance" onclick="goPage(this)"><span class="sb-ico">💰</span>財務總覽</div>
-    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📚</span>講義庫存</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-foot">
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v65</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v67</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -685,42 +694,66 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 
       <!-- ══ 教師視角 ══ -->
       <div id="mat-teacher-view">
+
+        <!-- 庫存總覽 + 搜尋 -->
         <div class="card">
-          <div class="ch"><div class="ct"><div class="dot"></div>目前庫存</div></div>
+          <div class="ch">
+            <div class="ct"><div class="dot"></div>目前庫存</div>
+            <input type="text" id="mat-search" placeholder="🔍 搜尋講義名稱…"
+              oninput="filterMaterials()"
+              style="font-size:.78rem;padding:5px 10px;border:1.5px solid var(--bdr);border-radius:8px;width:180px;outline:none;">
+          </div>
           <div class="cb" style="padding:0">
             <div id="mat-list"></div>
           </div>
         </div>
 
+        <!-- 取出 / 放入 操作區 -->
         <div class="card">
-          <div class="ch"><div class="ct"><div class="dot"></div>取出 / 放入申請</div></div>
+          <div class="ch"><div class="ct"><div class="dot"></div>申請取出 / 放入</div></div>
           <div class="cb">
-            <div class="gr g2">
-              <div class="fg">
-                <label>講義名稱</label>
-                <input type="text" id="mat-req-name" placeholder="輸入講義名稱">
-              </div>
+            <!-- 講義名稱 + 自動補全 -->
+            <div class="fg" style="position:relative">
+              <label>講義名稱</label>
+              <input type="text" id="mat-req-name" placeholder="輸入或選擇講義名稱…"
+                oninput="showMatSuggest()"
+                autocomplete="off"
+                style="width:100%">
+              <div id="mat-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:8px;box-shadow:0 4px 16px rgba(13,34,64,.12);z-index:100;max-height:180px;overflow-y:auto"></div>
+            </div>
+
+            <div class="gr g2" style="margin-top:4px">
               <div class="fg">
                 <label>數量（本）</label>
                 <input type="number" id="mat-req-qty" min="1" value="1">
               </div>
+              <div class="fg">
+                <label>說明（選填）</label>
+                <input type="text" id="mat-req-note" placeholder="例：帶去竹東班">
+              </div>
             </div>
-            <div class="fg">
-              <label>說明（選填）</label>
-              <input type="text" id="mat-req-note" placeholder="例：帶去竹東班使用">
-            </div>
-            <div style="display:flex;gap:10px;margin-top:8px">
-              <button class="btn bn" style="flex:1;padding:10px;font-size:.88rem" onclick="submitMatRequest('out')">
+
+            <!-- 取出 / 放入 兩個大按鈕 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+              <button onclick="submitMatRequest('out')"
+                style="padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:.9rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;background:linear-gradient(135deg,#0d2240,#1a3660);color:#fff;box-shadow:0 3px 10px rgba(13,34,64,.25);transition:all .15s">
                 📤 取出
+                <div style="font-size:.7rem;font-weight:400;margin-top:2px;opacity:.8">從庫存拿走</div>
               </button>
-              <button class="btn bg" style="flex:1;padding:10px;font-size:.88rem;border:1.5px solid var(--bdr2)" onclick="submitMatRequest('in')">
+              <button onclick="submitMatRequest('in')"
+                style="padding:14px;border:1.5px solid var(--grn);border-radius:12px;cursor:pointer;font-size:.9rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;background:rgba(16,185,129,.06);color:#065f46;transition:all .15s">
                 📥 放入
+                <div style="font-size:.7rem;font-weight:400;margin-top:2px;opacity:.75">歸還到庫存</div>
               </button>
             </div>
-            <div class="notice" style="margin-top:10px">送出後等管理員審核，核准後庫存才會正式異動。</div>
+
+            <div style="font-size:.71rem;color:var(--muted);text-align:center;margin-top:10px">
+              申請送出後需管理員審核，核准後庫存才正式異動
+            </div>
           </div>
         </div>
 
+        <!-- 我的申請紀錄 -->
         <div class="card">
           <div class="ch"><div class="ct"><div class="dot"></div>我的申請紀錄</div></div>
           <div class="cb" style="padding:0"><div id="mat-my-requests"></div></div>
@@ -732,7 +765,12 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <div class="card">
           <div class="ch">
             <div class="ct"><div class="dot"></div>講義庫存管理</div>
-            <button class="btn bn bsm" onclick="openAddMaterial()">➕ 新增品項</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="mat-admin-search" placeholder="🔍 搜尋…"
+                oninput="filterAdminMaterials()"
+                style="font-size:.78rem;padding:5px 10px;border:1.5px solid var(--bdr);border-radius:8px;width:150px;outline:none;">
+              <button class="btn bn bsm" onclick="openAddMaterial()">➕ 新增品項</button>
+            </div>
           </div>
           <div class="cb" style="padding:0">
             <div id="mat-admin-list"></div>
@@ -1001,6 +1039,8 @@ function enterApp(){
   document.getElementById('sb-av').textContent=cur.name.slice(0,1);
   document.getElementById('sb-un').textContent=cur.name;
   document.getElementById('sb-ur').textContent=isAdm()?'管理員（易學國文）':'教師';
+  document.getElementById('nav-materials-t') && (document.getElementById('nav-materials-t').style.display=isAdm()?'none':'block');
+  document.getElementById('nav-materials-a') && (document.getElementById('nav-materials-a').style.display=isAdm()?'block':'none');
   document.getElementById('nav-t').style.display=isAdm()?'none':'block';
   document.getElementById('nav-a').style.display=isAdm()?'block':'none';
   // Mobile nav - toggle active one, CSS media query handles show/hide
@@ -2882,6 +2922,54 @@ window.exportFinance=exportFinance;
 // 講義庫存系統
 // ══════════════════════════════════════
 
+
+// ── 講義搜尋 ──
+function filterMaterials(){
+  const kw=(document.getElementById('mat-search')?.value||'').toLowerCase();
+  renderMatList(kw);
+}
+function filterAdminMaterials(){
+  const kw=(document.getElementById('mat-admin-search')?.value||'').toLowerCase();
+  renderMatAdminList(kw);
+}
+
+// ── 自動補全 ──
+function showMatSuggest(){
+  const inp=document.getElementById('mat-req-name');
+  const box=document.getElementById('mat-suggest');
+  if(!inp||!box)return;
+  const kw=inp.value.toLowerCase();
+  const matches=(S.materials||[]).filter(m=>m.name.toLowerCase().includes(kw));
+  if(!kw||!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(m=>
+    `<div onclick="selectMatSuggest('${m.name.replace(/'/g,"\\'")}','${m.qty||0}')"
+      style="padding:8px 12px;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--bdr);transition:background .1s"
+      onmouseover="this.style.background='var(--blight)'"
+      onmouseout="this.style.background=''">
+      <span style="font-weight:600">${m.name}</span>
+      <span style="color:var(--muted);font-size:.72rem;margin-left:8px">剩 ${m.qty||0} 本</span>
+    </div>`
+  ).join('');
+  box.style.display='block';
+}
+function selectMatSuggest(name, qty){
+  const inp=document.getElementById('mat-req-name');
+  if(inp)inp.value=name;
+  const box=document.getElementById('mat-suggest');
+  if(box)box.style.display='none';
+}
+// 點其他地方關閉自動補全
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#mat-req-name')&&!e.target.closest('#mat-suggest')){
+    const box=document.getElementById('mat-suggest');
+    if(box)box.style.display='none';
+  }
+});
+window.filterMaterials=filterMaterials;
+window.filterAdminMaterials=filterAdminMaterials;
+window.showMatSuggest=showMatSuggest;
+window.selectMatSuggest=selectMatSuggest;
+
 function renderMaterials(){
   // 切換教師/管理員視角
   const tv = document.getElementById('mat-teacher-view');
@@ -2900,9 +2988,9 @@ function renderMaterials(){
 }
 
 // 教師：庫存列表
-function renderMatList(){
+function renderMatList(kw=''){
   const el = document.getElementById('mat-list'); if(!el) return;
-  const mats = S.materials || [];
+  const mats = (S.materials||[]).filter(m=>!kw||m.name.toLowerCase().includes(kw));
   if(!mats.length){
     el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">📚</div>目前尚無講義品項</div>';
     return;
@@ -2943,9 +3031,9 @@ function renderMyMatRequests(){
 }
 
 // 管理員：庫存管理列表
-function renderMatAdminList(){
+function renderMatAdminList(kw=''){
   const el = document.getElementById('mat-admin-list'); if(!el) return;
-  const mats = S.materials || [];
+  const mats = (S.materials||[]).filter(m=>!kw||m.name.toLowerCase().includes(kw));
   if(!mats.length){
     el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">📚</div>尚無品項，請點「新增品項」</div>';
     return;
