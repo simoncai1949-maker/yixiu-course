@@ -276,7 +276,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v68</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v69</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -397,9 +397,32 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
             <hr>
             <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">鐘點費 / 抽成（僅本人與易學國文可見）</div>
             <div class="gr g3">
-              <div class="fg"><label>鐘點費（元/堂）</label><input type="number" id="rc-fee" placeholder="0" min="0"></div>
-              <div class="fg"><label>派師費（元/堂）</label><input type="number" id="rc-ds" placeholder="0" min="0"></div>
-              <div class="fg"><label>講義費（元/堂）</label><input type="number" id="rc-lec" placeholder="0" min="0"></div>
+              <div class="fg"><label>鐘點費（元/堂）</label>
+          <input type="number" id="rc-fee" placeholder="0" min="0" oninput="calcFeePreview_rc()"/></div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>派師費</span>
+            <button type="button" id="rc-ds-mode" onclick="toggleFeeMode_('rc','ds')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="rc-ds" placeholder="0" min="0" style="flex:1" oninput="calcFeePreview_rc()"/>
+            <span id="rc-ds-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="rc-ds-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>講義費</span>
+            <button type="button" id="rc-lec-mode" onclick="toggleFeeMode_('rc','lec')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="rc-lec" placeholder="0" min="0" style="flex:1" oninput="calcFeePreview_rc()"/>
+            <span id="rc-lec-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="rc-lec-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
             </div>
             <div class="priv-notice">🔒 費用欄位僅您本人及管理員（易學國文）可見，其他師資無法看到此資訊。</div>
             <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn bn" onclick="saveRecurring()">新增常態課程</button></div>
@@ -1250,7 +1273,7 @@ async function saveRecurring(){
   const tid=cur.id,dept=document.getElementById('rc-dept').value.trim(),branch=document.getElementById('rc-branch').value.trim(),grade=document.getElementById('rc-grade').value.trim();
   if(!dept||!branch||!grade){toast('請填寫班部、分校、年段');return;}
   const freq=document.getElementById('rc-freq')?.value||'weekly';
-  await fsAdd('recurring',{tid,wd:parseInt(document.getElementById('rc-wd').value),freq,start:document.getElementById('rc-s').value,end:document.getElementById('rc-e').value,dept,branch,grade,fee:parseFloat(document.getElementById('rc-fee').value)||0,ds:parseFloat(document.getElementById('rc-ds').value)||0,lec:parseFloat(document.getElementById('rc-lec').value)||0,from:document.getElementById('rc-from').value||null,to:document.getElementById('rc-to').value||null});
+  await fsAdd('recurring',{tid,wd:parseInt(document.getElementById('rc-wd').value),freq,start:document.getElementById('rc-s').value,end:document.getElementById('rc-e').value,dept,branch,grade,fee:parseFloat(document.getElementById('rc-fee').value)||0,ds:getFeeAmount_('rc','ds'),lec:getFeeAmount_('rc','lec'),from:document.getElementById('rc-from').value||null,to:document.getElementById('rc-to').value||null});
   await logHistory('course','新增常態課程：'+dept+branch+grade,cur.id);
   ['rc-dept','rc-branch','rc-grade','rc-from','rc-to','rc-fee','rc-ds','rc-lec'].forEach(id=>document.getElementById(id).value='');
   toast('常態課程已新增',true);
@@ -1294,8 +1317,8 @@ async function saveEditRec(){
   const fromVal=document.getElementById('er-from').value||null;
   const toVal=document.getElementById('er-to').value||null;
   const fee=parseFloat(document.getElementById('er-fee').value)||0;
-  const ds2=parseFloat(document.getElementById('er-ds').value)||0;
-  const lec=parseFloat(document.getElementById('er-lec').value)||0;
+  const ds2=getFeeAmount_('er','ds');
+  const lec=getFeeAmount_('er','lec');
   if(!dept||!branch||!grade){toast('請填寫完整班部分校年段');return;}
   const scope=document.querySelector('input[name=er-scope]:checked')?.value||'all';
   if(scope==='all'){
@@ -1332,7 +1355,7 @@ function renderSpotList(){
 }
 let editSpotId=null;
 function openEditSpot(id){editSpotId=id;const s=S.spots.find(x=>x.id===id);if(!s)return;document.getElementById('es-date').value=s.date||'';document.getElementById('es-start').value=s.start||'';document.getElementById('es-end').value=s.end||'';document.getElementById('es-dept').value=s.dept||'';document.getElementById('es-branch').value=s.branch||'';document.getElementById('es-grade').value=s.grade||'';document.getElementById('es-fee').value=s.fee||0;document.getElementById('es-ds').value=s.ds||0;document.getElementById('es-lec').value=s.lec||0;openOv('ov-edit-spot');}
-async function saveEditSpot(){if(!editSpotId)return;const updates={date:document.getElementById('es-date').value,start:document.getElementById('es-start').value,end:document.getElementById('es-end').value,dept:document.getElementById('es-dept').value.trim(),branch:document.getElementById('es-branch').value.trim(),grade:document.getElementById('es-grade').value.trim(),fee:parseFloat(document.getElementById('es-fee').value)||0,ds:parseFloat(document.getElementById('es-ds').value)||0,lec:parseFloat(document.getElementById('es-lec').value)||0};if(!updates.dept||!updates.branch||!updates.grade||!updates.date){toast('請填寫完整資訊');return;}await fsUpdate('spots',editSpotId,updates);closeOv('ov-edit-spot');toast('✅ 點狀課程已更新',true);}
+async function saveEditSpot(){if(!editSpotId)return;const updates={date:document.getElementById('es-date').value,start:document.getElementById('es-start').value,end:document.getElementById('es-end').value,dept:document.getElementById('es-dept').value.trim(),branch:document.getElementById('es-branch').value.trim(),grade:document.getElementById('es-grade').value.trim(),fee:parseFloat(document.getElementById('es-fee').value)||0,ds:getFeeAmount_('es','ds'),lec:getFeeAmount_('es','lec')};if(!updates.dept||!updates.branch||!updates.grade||!updates.date){toast('請填寫完整資訊');return;}await fsUpdate('spots',editSpotId,updates);closeOv('ov-edit-spot');toast('✅ 點狀課程已更新',true);}
 async function bulkDeleteSpots(){const ids=Array.from(document.querySelectorAll('.spot-cb:checked')).map(x=>x.dataset.id);if(!ids.length){toast('請先勾選要刪除的課程');return;}if(!confirm('確定刪除選取的 '+ids.length+' 堂點狀課程？'))return;await Promise.all(ids.map(id=>fsDel('spots',id)));toast('已刪除 '+ids.length+' 堂',true);}
 function openBulkEditSpot(){const ids=Array.from(document.querySelectorAll('.spot-cb:checked')).map(x=>x.dataset.id);if(!ids.length){toast('請先勾選要編輯的課程');return;}window._bulkSpotIds=ids;['bes-dept','bes-branch','bes-grade','bes-start','bes-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('bes-count').textContent='已選 '+ids.length+' 堂';openOv('ov-bulk-edit-spot');}
 async function saveBulkEditSpot(){const ids=window._bulkSpotIds||[];if(!ids.length)return;const dept=document.getElementById('bes-dept').value.trim(),branch=document.getElementById('bes-branch').value.trim(),grade=document.getElementById('bes-grade').value.trim(),start=document.getElementById('bes-start').value,end=document.getElementById('bes-end').value;const updates={};if(dept)updates.dept=dept;if(branch)updates.branch=branch;if(grade)updates.grade=grade;if(start)updates.start=start;if(end)updates.end=end;if(!Object.keys(updates).length){toast('請至少填寫一個要修改的欄位');return;}await Promise.all(ids.map(id=>fsUpdate('spots',id,updates)));closeOv('ov-bulk-edit-spot');toast('已更新 '+ids.length+' 堂課程',true);}
@@ -3260,6 +3283,70 @@ window.calcFeePreview=calcFeePreview;
 window.getFeeAmount=getFeeAmount;
 window.resetFeeMode=resetFeeMode;
 
+
+// ── 通用費用%切換（支援任意 prefix）──
+const _feeModes = {}; // e.g. {rc:{ds:'amount',lec:'amount'}, er:{...}}
+
+function toggleFeeMode_(prefix, field){
+  if(!_feeModes[prefix]) _feeModes[prefix]={ds:'amount',lec:'amount'};
+  const cur = _feeModes[prefix][field];
+  _feeModes[prefix][field] = cur==='amount'?'percent':'amount';
+  const isPercent = _feeModes[prefix][field]==='percent';
+  const btn=document.getElementById(prefix+'-'+field+'-mode');
+  const unit=document.getElementById(prefix+'-'+field+'-unit');
+  const inp=document.getElementById(prefix+'-'+field);
+  if(btn){btn.textContent=isPercent?'元 切換':'% 切換';btn.style.color=isPercent?'var(--blue)':'var(--muted)';btn.style.borderColor=isPercent?'var(--blue)':'var(--bdr)';btn.style.background=isPercent?'var(--blight)':'var(--bg2)';}
+  if(unit)unit.textContent=isPercent?'%':'元';
+  if(inp){inp.value='0';if(isPercent)inp.max='100';else inp.removeAttribute('max');}
+  window['calcFeePreview_'+prefix]?.();
+}
+
+function makeFeePreview(prefix){
+  return function(){
+    if(!_feeModes[prefix]) _feeModes[prefix]={ds:'amount',lec:'amount'};
+    const fee=parseFloat(document.getElementById(prefix+'-fee')?.value)||0;
+    ['ds','lec'].forEach(f=>{
+      const inp=document.getElementById(prefix+'-'+f);
+      const prev=document.getElementById(prefix+'-'+f+'-prev');
+      if(!inp||!prev)return;
+      const val=parseFloat(inp.value)||0;
+      if(_feeModes[prefix][f]==='percent'&&fee>0){
+        prev.textContent='= '+Math.round(fee*val/100)+' 元';
+        prev.style.display='inline';
+      } else {
+        prev.style.display='none';
+      }
+    });
+  };
+}
+
+function getFeeAmount_(prefix, field){
+  if(!_feeModes[prefix]) return parseFloat(document.getElementById(prefix+'-'+field)?.value)||0;
+  const fee=parseFloat(document.getElementById(prefix+'-fee')?.value)||0;
+  const val=parseFloat(document.getElementById(prefix+'-'+field)?.value)||0;
+  return _feeModes[prefix][field]==='percent'?Math.round(fee*val/100):val;
+}
+
+function resetFeeMode_(prefix){
+  if(!_feeModes[prefix]) return;
+  ['ds','lec'].forEach(f=>{
+    if(_feeModes[prefix][f]==='percent') toggleFeeMode_(prefix,f);
+  });
+}
+
+// 為各 prefix 建立 calcFeePreview_xxx 函式
+['rc','er','qa','es'].forEach(p=>{
+  window['calcFeePreview_'+p] = makeFeePreview(p);
+});
+
+window.calcFeePreview_rc=makeFeePreview('rc');
+window.calcFeePreview_er=makeFeePreview('er');
+window.calcFeePreview_qa=makeFeePreview('qa');
+window.calcFeePreview_es=makeFeePreview('es');
+window.toggleFeeMode_=toggleFeeMode_;
+window.getFeeAmount_=getFeeAmount_;
+window.resetFeeMode_=resetFeeMode_;
+
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
 window.toggleRecCheck=toggleRecCheck;
@@ -3411,9 +3498,32 @@ function isHoliday(ds, tid){
       <hr>
       <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">鐘點費 / 抽成</div>
       <div class="gr g3">
-        <div class="fg"><label>鐘點費</label><input type="number" id="er-fee" min="0" /></div>
-        <div class="fg"><label>派師費</label><input type="number" id="er-ds" min="0" /></div>
-        <div class="fg"><label>講義費</label><input type="number" id="er-lec" min="0" /></div>
+        <div class="fg"><label>鐘點費</label>
+          <input type="number" id="er-fee" placeholder="0" min="0" oninput="calcFeePreview_er()"/></div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>派師費</span>
+            <button type="button" id="er-ds-mode" onclick="toggleFeeMode_('er','ds')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="er-ds" placeholder="0" min="0" style="flex:1" oninput="calcFeePreview_er()"/>
+            <span id="er-ds-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="er-ds-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>講義費</span>
+            <button type="button" id="er-lec-mode" onclick="toggleFeeMode_('er','lec')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="er-lec" placeholder="0" min="0" style="flex:1" oninput="calcFeePreview_er()"/>
+            <span id="er-lec-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="er-lec-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
       </div>
       <div class="priv-notice">🔒 費用欄位僅本人及管理員可見。</div>
       <hr>
@@ -3491,9 +3601,32 @@ function isHoliday(ds, tid){
       <hr>
       <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">費用（僅本人與管理員可見）</div>
       <div class="gr g3">
-        <div class="fg"><label>鐘點費</label><input type="number" id="es-fee" min="0" /></div>
-        <div class="fg"><label>派師費</label><input type="number" id="es-ds" min="0" /></div>
-        <div class="fg"><label>講義費</label><input type="number" id="es-lec" min="0" /></div>
+        <div class="fg"><label>鐘點費</label>
+          <input type="number" id="es-fee" min="0" oninput="calcFeePreview_es()"/></div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>派師費</span>
+            <button type="button" id="es-ds-mode" onclick="toggleFeeMode_('es','ds')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="es-ds" min="0" style="flex:1" oninput="calcFeePreview_es()"/>
+            <span id="es-ds-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="es-ds-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>講義費</span>
+            <button type="button" id="es-lec-mode" onclick="toggleFeeMode_('es','lec')"
+              style="font-size:.62rem;padding:1px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+          </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="es-lec" min="0" style="flex:1" oninput="calcFeePreview_es()"/>
+            <span id="es-lec-unit" style="font-size:.72rem;color:var(--muted)">元</span>
+            <span id="es-lec-prev" style="font-size:.7rem;color:var(--blue);display:none"></span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-spot')">取消</button><button class="btn bn" onclick="saveEditSpot()">儲存</button></div>
@@ -3553,17 +3686,17 @@ function isHoliday(ds, tid){
       <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">費用（僅本人與管理員可見）</div>
       <div class="gr g3" style="margin-bottom:8px">
         <div class="fg"><label>鐘點費（元）</label>
-          <input type="number" id="qa-fee" value="0" min="0" oninput="calcFeePreview()" /></div>
+          <input type="number" id="qa-fee" value="0" min="0" oninput="calcFeePreview_qa()" /></div>
         <div class="fg">
           <label style="display:flex;align-items:center;justify-content:space-between">
             <span>派師費</span>
             <span style="display:flex;align-items:center;gap:4px">
-              <button type="button" id="ds-mode-btn" onclick="toggleFeeMode('ds')"
+              <button type="button" id="ds-mode-btn" onclick="toggleFeeMode_('qa','ds')"
                 style="font-size:.65rem;padding:2px 7px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
             </span>
           </label>
           <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="qa-ds" value="0" min="0" style="flex:1" oninput="calcFeePreview()" />
+            <input type="number" id="qa-ds" value="0" min="0" style="flex:1" oninput="calcFeePreview_qa()" />
             <span id="ds-unit" style="font-size:.75rem;color:var(--muted);white-space:nowrap">元</span>
             <span id="ds-preview" style="font-size:.72rem;color:var(--blue);white-space:nowrap;display:none"></span>
           </div>
@@ -3572,12 +3705,12 @@ function isHoliday(ds, tid){
           <label style="display:flex;align-items:center;justify-content:space-between">
             <span>講義費</span>
             <span style="display:flex;align-items:center;gap:4px">
-              <button type="button" id="lec-mode-btn" onclick="toggleFeeMode('lec')"
+              <button type="button" id="lec-mode-btn" onclick="toggleFeeMode_('qa','lec')"
                 style="font-size:.65rem;padding:2px 7px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
             </span>
           </label>
           <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="qa-lec" value="0" min="0" style="flex:1" oninput="calcFeePreview()" />
+            <input type="number" id="qa-lec" value="0" min="0" style="flex:1" oninput="calcFeePreview_qa()" />
             <span id="lec-unit" style="font-size:.75rem;color:var(--muted);white-space:nowrap">元</span>
             <span id="lec-preview" style="font-size:.72rem;color:var(--blue);white-space:nowrap;display:none"></span>
           </div>
