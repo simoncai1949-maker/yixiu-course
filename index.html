@@ -276,7 +276,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v67</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/06/05　v68</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -3201,6 +3201,65 @@ window.rejectMatRequest=rejectMatRequest;
 window.renderMatAdminList=renderMatAdminList;
 window.renderMatReview=renderMatReview;
 
+
+// ── 費用模式（元 / %）──
+const _feeMode = {ds:'amount', lec:'amount'};
+
+function toggleFeeMode(field){
+  _feeMode[field] = _feeMode[field]==='amount' ? 'percent' : 'amount';
+  const btn = document.getElementById(field+'-mode-btn');
+  const unit = document.getElementById(field+'-unit');
+  const inp = document.getElementById('qa-'+field);
+  if(_feeMode[field]==='percent'){
+    if(btn){ btn.textContent='元 切換'; btn.style.background='var(--blight)'; btn.style.color='var(--blue)'; btn.style.borderColor='var(--blue)'; }
+    if(unit) unit.textContent='%';
+    if(inp){ inp.value='0'; inp.max='100'; }
+  } else {
+    if(btn){ btn.textContent='% 切換'; btn.style.background='var(--bg2)'; btn.style.color='var(--muted)'; btn.style.borderColor='var(--bdr)'; }
+    if(unit) unit.textContent='元';
+    if(inp){ inp.value='0'; inp.removeAttribute('max'); }
+  }
+  calcFeePreview();
+}
+
+function calcFeePreview(){
+  const fee = parseFloat(document.getElementById('qa-fee')?.value)||0;
+  ['ds','lec'].forEach(field=>{
+    const inp = document.getElementById('qa-'+field);
+    const preview = document.getElementById(field+'-preview');
+    if(!inp||!preview) return;
+    const val = parseFloat(inp.value)||0;
+    if(_feeMode[field]==='percent' && fee > 0){
+      const amt = Math.round(fee * val / 100);
+      preview.textContent = '= '+amt+' 元';
+      preview.style.display='inline';
+    } else {
+      preview.style.display='none';
+    }
+  });
+}
+
+function getFeeAmount(field){
+  // 取得最終金額（%模式就換算，元模式直接取值）
+  const fee = parseFloat(document.getElementById('qa-fee')?.value)||0;
+  const val = parseFloat(document.getElementById('qa-'+field)?.value)||0;
+  if(_feeMode[field]==='percent'){
+    return Math.round(fee * val / 100);
+  }
+  return val;
+}
+
+function resetFeeMode(){
+  // 重設模式為「元」
+  ['ds','lec'].forEach(field=>{
+    if(_feeMode[field]==='percent') toggleFeeMode(field);
+  });
+}
+window.toggleFeeMode=toggleFeeMode;
+window.calcFeePreview=calcFeePreview;
+window.getFeeAmount=getFeeAmount;
+window.resetFeeMode=resetFeeMode;
+
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
 window.toggleRecCheck=toggleRecCheck;
@@ -3493,9 +3552,36 @@ function isHoliday(ds, tid){
       <hr>
       <div style="font-size:.77rem;font-weight:500;color:var(--navy);margin-bottom:7px">費用（僅本人與管理員可見）</div>
       <div class="gr g3" style="margin-bottom:8px">
-        <div class="fg"><label>鐘點費</label><input type="number" id="qa-fee" value="0" min="0" /></div>
-        <div class="fg"><label>派師費</label><input type="number" id="qa-ds" value="0" min="0" /></div>
-        <div class="fg"><label>講義費</label><input type="number" id="qa-lec" value="0" min="0" /></div>
+        <div class="fg"><label>鐘點費（元）</label>
+          <input type="number" id="qa-fee" value="0" min="0" oninput="calcFeePreview()" /></div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>派師費</span>
+            <span style="display:flex;align-items:center;gap:4px">
+              <button type="button" id="ds-mode-btn" onclick="toggleFeeMode('ds')"
+                style="font-size:.65rem;padding:2px 7px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+            </span>
+          </label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="qa-ds" value="0" min="0" style="flex:1" oninput="calcFeePreview()" />
+            <span id="ds-unit" style="font-size:.75rem;color:var(--muted);white-space:nowrap">元</span>
+            <span id="ds-preview" style="font-size:.72rem;color:var(--blue);white-space:nowrap;display:none"></span>
+          </div>
+        </div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>講義費</span>
+            <span style="display:flex;align-items:center;gap:4px">
+              <button type="button" id="lec-mode-btn" onclick="toggleFeeMode('lec')"
+                style="font-size:.65rem;padding:2px 7px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg2);color:var(--muted);cursor:pointer">% 切換</button>
+            </span>
+          </label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="qa-lec" value="0" min="0" style="flex:1" oninput="calcFeePreview()" />
+            <span id="lec-unit" style="font-size:.75rem;color:var(--muted);white-space:nowrap">元</span>
+            <span id="lec-preview" style="font-size:.72rem;color:var(--blue);white-space:nowrap;display:none"></span>
+          </div>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer" onclick="toggleRecCheck()">
         <input type="checkbox" id="qa-isrec" onclick="event.stopPropagation()" onchange="document.getElementById('qa-from-row').style.display=this.checked?'grid':'none'" style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer">
