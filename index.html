@@ -308,7 +308,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v76</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v77</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -2395,7 +2395,7 @@ function doExport(){
       const cCancelled=S.requests.some(req=>
         req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
         req.sessions.some(s=>s.date===ds&&s.start===c.start));
-      if(!cCancelled){sn++;rows.push([sn,ds,tid?c.dept+c.branch:tn(c.tid)+' '+c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);}
+      if(!cCancelled){sn++;rows.push([sn,ds,tn(c.tid),c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);}
     });S.recurring.filter(r=>{
       if(!tids.includes(r.tid)||r.wd!==wd) return false;
       if(r.from&&ds<r.from) return false;
@@ -2417,12 +2417,12 @@ function doExport(){
       if(onLeave) return;
       // 3. 假日設定 → 不計
       if(isHoliday(ds,r.tid,r.id)) return;
-      sn++;rows.push([sn,ds,tid?r.dept+r.branch:tn(r.tid)+' '+r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);
+      sn++;rows.push([sn,ds,tn(r.tid),r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);
     });S.spots.filter(s=>tids.includes(s.tid)&&s.date===ds&&matchBranch(s.dept,s.branch)).forEach(s=>{
       const sCancelled=S.requests.some(req=>
         req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
         req.sessions.some(sess=>sess.date===ds&&sess.start===s.start));
-      if(!sCancelled){sn++;rows.push([sn,ds,tid?s.dept+s.branch:tn(s.tid)+' '+s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
+      if(!sCancelled){sn++;rows.push([sn,ds,tn(s.tid),s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
     });});
   if(!rows.length){toast('此期間無課程資料');return;}
   // wsData structure:
@@ -2430,22 +2430,22 @@ function doExport(){
   const dataStartRow = 6; // Excel row number where data starts (1-indexed)
   const dataEndRow = rows.length + dataStartRow - 1; // last data row
   const wsData=[
-    ['易學國文師資團隊 — 段數表','','','','','','','',''],
-    ['師資：'+tname,'','','','','','','',''],
-    ['期間：'+dates[0]+' ～ '+dates[dates.length-1],'','','','','','','',''],
+    ['易學國文師資團隊 — 段數表','','','','','','','','',''],
+    ['師資：'+tname,'','','','','','','','',''],
+    ['期間：'+dates[0]+' ～ '+dates[dates.length-1],'','','','','','','','',''],
     [],
-    ['堂次','日期','班部（班部+分校）','年段','時間','鐘點費（元）','派師費（元）','講義費（元）','備注'],
+    ['堂次','日期','師資','班部（班部+分校）','年段','時間','鐘點費（元）','派師費（元）','講義費（元）','備注'],
     ...rows,
     [],
-    ['','','','','合計',
-      '=SUM(F'+dataStartRow+':F'+dataEndRow+')',
+    ['','','','','','合計',
       '=SUM(G'+dataStartRow+':G'+dataEndRow+')',
       '=SUM(H'+dataStartRow+':H'+dataEndRow+')',
+      '=SUM(I'+dataStartRow+':I'+dataEndRow+')',
       '']
   ];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols']=[{wch:5},{wch:12},{wch:16},{wch:7},{wch:12},{wch:11},{wch:11},{wch:11},{wch:14}];
-  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}},{s:{r:2,c:0},e:{r:2,c:8}}];
+  ws['!cols']=[{wch:5},{wch:12},{wch:8},{wch:16},{wch:7},{wch:12},{wch:11},{wch:11},{wch:11},{wch:14}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}},{s:{r:2,c:0},e:{r:2,c:9}}];
   XLSX.utils.book_append_sheet(wb,ws,'段數表');
   XLSX.writeFile(wb,tname+'_段數表_'+dates[0]+'_'+dates[dates.length-1]+'.xlsx');
   closeOv('ov-export');toast('✅ 段數表已匯出',true);
