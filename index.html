@@ -308,7 +308,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v75</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v76</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -1259,7 +1259,10 @@ function goPage(el){
 function fillSel(){
   const opts=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
   const full='<option value="">— 請選擇師資 —</option>'+opts;
-  ['sch-t','sc-t','exp-t'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const v=el.value;el.innerHTML=full;el.value=v||'';});
+  const fullWithAll='<option value="">全部師資</option>'+opts;
+  ['sch-t','sc-t'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const v=el.value;el.innerHTML=full;el.value=v||'';});
+  const expEl=document.getElementById('exp-t');
+  if(expEl){const v=expEl.value;expEl.innerHTML=fullWithAll;expEl.value=v||'';}
   const lv=document.getElementById('lv-t');
   if(lv){if(isAdm()){lv.innerHTML=full;document.getElementById('lv-t-row').style.display='flex';}else{lv.innerHTML=`<option value="${cur.id}">${cur.name}</option>`;document.getElementById('lv-t-row').style.display='none';}}
   const ts=document.getElementById('take-sel');if(ts)ts.innerHTML='<option value="">— 請選擇 —</option>'+opts;
@@ -2380,19 +2383,21 @@ function openExportModal(){
 }
 function getExportDates(range){const now=new Date();if(range==='week'){const day=now.getDay(),diff=day===0?-6:1-day,mon=new Date(now);mon.setDate(now.getDate()+diff);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d.toISOString().slice(0,10);});}else if(range==='month'){const y=now.getFullYear(),m=now.getMonth()+1,days=new Date(y,m,0).getDate();return Array.from({length:days},(_,i)=>y+'-'+String(m).padStart(2,'0')+'-'+String(i+1).padStart(2,'0'));}else{const mv=document.getElementById('exp-month').value;if(!mv)return[];const[y,m]=mv.split('-').map(Number),days=new Date(y,m,0).getDate();return Array.from({length:days},(_,i)=>y+'-'+String(m).padStart(2,'0')+'-'+String(i+1).padStart(2,'0'));}}
 function doExport(){
-  const tid=document.getElementById('exp-t').value;if(!tid){toast('請選擇師資');return;}
-  const range=document.getElementById('exp-range').value,dates=getExportDates(range),tname=tn(tid);
+  const tid=document.getElementById('exp-t').value; // 空字串 = 全部師資
+  const range=document.getElementById('exp-range').value,dates=getExportDates(range);
+  const tname=tid?tn(tid):'全部師資';
   const branchKw=(document.getElementById('exp-branch')?.value||'').trim().toLowerCase();
   const matchBranch=(dept,branch)=>!branchKw||(dept+branch).toLowerCase().includes(branchKw);
+  const tids=tid?[tid]:S.teachers.map(t=>t.id); // 全部或單一師資
   let rows=[],sn=0;
-  dates.forEach(ds=>{const wd=parseLocalDate(ds).getDay();S.courses.filter(c=>c.tid===tid&&c.date===ds&&matchBranch(c.dept,c.branch)).forEach(c=>{
+  dates.forEach(ds=>{const wd=parseLocalDate(ds).getDay();S.courses.filter(c=>tids.includes(c.tid)&&c.date===ds&&matchBranch(c.dept,c.branch)).forEach(c=>{
       // 管理課程也要排除停課/請假
       const cCancelled=S.requests.some(req=>
         req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
         req.sessions.some(s=>s.date===ds&&s.start===c.start));
-      if(!cCancelled){sn++;rows.push([sn,ds,c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);}
+      if(!cCancelled){sn++;rows.push([sn,ds,tid?c.dept+c.branch:tn(c.tid)+' '+c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);}
     });S.recurring.filter(r=>{
-      if(r.tid!==tid||r.wd!==wd) return false;
+      if(!tids.includes(r.tid)||r.wd!==wd) return false;
       if(r.from&&ds<r.from) return false;
       if(r.to&&ds>r.to) return false;
       const freq=r.freq||'weekly';
@@ -2402,22 +2407,22 @@ function doExport(){
     }).filter(r=>matchBranch(r.dept,r.branch)).forEach(r=>{
       // 1. 停課申請核准 → 不計
       const cancelled=S.requests.some(req=>
-        req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&
+        req.status==='approved'&&req.type==='cancel'&&req.tid===r.tid&&
         req.sessions.some(s=>s.date===ds&&s.start===r.start));
       if(cancelled) return;
       // 2. 請假找代課核准 → 原老師不計（由代課老師上）
       const onLeave=S.requests.some(req=>
-        req.status==='approved'&&req.type==='leave'&&req.tid===tid&&
+        req.status==='approved'&&req.type==='leave'&&req.tid===r.tid&&
         req.sessions.some(s=>s.date===ds&&s.start===r.start));
       if(onLeave) return;
       // 3. 假日設定 → 不計
-      if(isHoliday(ds,tid,r.id)) return;
-      sn++;rows.push([sn,ds,r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);
-    });S.spots.filter(s=>s.tid===tid&&s.date===ds&&matchBranch(s.dept,s.branch)).forEach(s=>{
+      if(isHoliday(ds,r.tid,r.id)) return;
+      sn++;rows.push([sn,ds,tid?r.dept+r.branch:tn(r.tid)+' '+r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);
+    });S.spots.filter(s=>tids.includes(s.tid)&&s.date===ds&&matchBranch(s.dept,s.branch)).forEach(s=>{
       const sCancelled=S.requests.some(req=>
         req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
         req.sessions.some(sess=>sess.date===ds&&sess.start===s.start));
-      if(!sCancelled){sn++;rows.push([sn,ds,s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
+      if(!sCancelled){sn++;rows.push([sn,ds,tid?s.dept+s.branch:tn(s.tid)+' '+s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
     });});
   if(!rows.length){toast('此期間無課程資料');return;}
   // wsData structure:
