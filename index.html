@@ -263,7 +263,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   </div>
   <div class="sb-sec" id="nav-materials-a">
     <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
-    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📦</span>講義庫存系統</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)" style="position:relative">
+      <span class="sb-ico">📦</span>講義庫存系統
+      <span id="badge-mat" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+    </div>
   </div>
   <div class="sb-sec" id="presence-section" style="border-top:1px solid rgba(255,255,255,.07);padding:4px 0">
     <div class="sb-lbl">在線上</div>
@@ -276,15 +279,22 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="newcourse" onclick="goPage(this)"><span class="sb-ico">➕</span>新增課程</div>
     <div class="sb-lbl" style="margin-top:6px">申請 &amp; 代課</div>
     <div class="sb-item" data-p="leave" onclick="goPage(this)"><span class="sb-ico">📝</span>提出申請</div>
-    <div class="sb-item" data-p="sub" onclick="goPage(this)"><span class="sb-ico">🔄</span>代課接課</div>
+    <div class="sb-item" data-p="sub" onclick="goPage(this)" style="position:relative">
+      <span class="sb-ico">🔄</span>代課接課
+      <span id="badge-sub" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+    </div>
     <div class="sb-lbl" style="margin-top:6px">其他</div>
+    <div class="sb-item" data-p="myfinance" onclick="goPage(this)"><span class="sb-ico">💰</span>我的收入</div>
     <div class="sb-item" data-p="journals" onclick="goPage(this)"><span class="sb-ico">📓</span>教師日誌</div>
     <div class="sb-item" data-p="history" id="nav-history-t" onclick="goPage(this)" style="display:none"><span class="sb-ico">📜</span>歷史紀錄</div>
     <div class="sb-item" data-p="cpw" onclick="goPage(this)"><span class="sb-ico">🔐</span>修改密碼</div>
   </div>
   <div class="sb-sec" id="nav-materials-t">
     <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
-    <div class="sb-item" data-p="materials" onclick="goPage(this)"><span class="sb-ico">📦</span>講義庫存系統</div>
+    <div class="sb-item" data-p="materials" onclick="goPage(this)" style="position:relative">
+      <span class="sb-ico">📦</span>講義庫存系統
+      <span id="badge-mat" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+    </div>
   </div>
   <div class="sb-sec" id="nav-a" style="display:none">
     <div class="sb-lbl">行事曆 &amp; 課程</div>
@@ -293,8 +303,14 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="newcourse" onclick="goPage(this)"><span class="sb-ico">➕</span>新增課程</div>
     <div class="sb-lbl" style="margin-top:6px">申請 &amp; 代課</div>
     <div class="sb-item" data-p="leave" onclick="goPage(this)"><span class="sb-ico">📝</span>提出申請</div>
-    <div class="sb-item" data-p="sub" onclick="goPage(this)"><span class="sb-ico">🔄</span>代課接課</div>
-    <div class="sb-item" data-p="review" onclick="goPage(this)"><span class="sb-ico">✅</span>審核申請</div>
+    <div class="sb-item" data-p="sub" onclick="goPage(this)" style="position:relative">
+      <span class="sb-ico">🔄</span>代課接課
+      <span id="badge-sub" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+    </div>
+    <div class="sb-item" data-p="review" onclick="goPage(this)" style="position:relative">
+      <span class="sb-ico">✅</span>審核申請
+      <span id="badge-review" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+    </div>
     <div class="sb-lbl" style="margin-top:6px">管理專區</div>
     <div class="sb-item" data-p="schedule" onclick="goPage(this)"><span class="sb-ico">📋</span>課表管理</div>
     <div class="sb-item" data-p="teachers" onclick="goPage(this)"><span class="sb-ico">👤</span>師資管理</div>
@@ -308,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v77</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v80</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -716,6 +732,21 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       </div>
     </div>
 
+    <div id="pg-myfinance" class="pg" style="display:none">
+      <div class="card">
+        <div class="ch">
+          <div class="ct"><div class="dot"></div>我的收入總覽</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="myfin-year" onchange="renderMyFinance()" style="font-size:.8rem;padding:4px 8px;border:1px solid var(--bdr);border-radius:6px"></select>
+            <button class="btn bg bsm" onclick="exportMyFinance()">📥 匯出</button>
+          </div>
+        </div>
+        <div class="cb" style="padding:0">
+          <div id="myfin-body"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="pg-exportsch" class="pg" style="display:none">
       <div class="card">
         <div class="ch"><div class="ct"><div class="dot"></div>快速匯出</div></div>
@@ -1085,7 +1116,7 @@ function refreshPage() {
   else if(p==='history') renderHistory();
   else if(p==='journals') renderJournals();
   else if(p==='leave') populateLeaveRecurring();
-  fillSel(); popLoginSel(); renderPresence(); if(document.getElementById('pg-materials')?.style.display!=='none')renderMaterials(); if(_dmTarget&&document.getElementById('ov-dm')?.classList.contains('open'))renderDmMessages();
+  fillSel(); popLoginSel(); renderPresence(); if(document.getElementById('pg-materials')?.style.display!=='none')renderMaterials(); updateBadges(); if(_dmTarget&&document.getElementById('ov-dm')?.classList.contains('open'))renderDmMessages();
 }
 
 window.addEventListener('load', ()=>{
@@ -1187,7 +1218,7 @@ async function forgotPw(){
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={materials:'講義庫存',exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+const TITLES={materials:'講義庫存',myfinance:'我的收入',exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function updatePresence(page){
   if(!cur) return;
   const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
@@ -1245,6 +1276,9 @@ function goPage(el){
   }
   if(p==='materials'){
     renderMaterials();
+  }
+  if(p==='myfinance'){
+    renderMyFinance();
   }
   if(p==='exportsch'){const esel=document.getElementById('exsch-t');if(esel)esel.innerHTML='<option value="">全部師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');const now2=new Date(),y2=now2.getFullYear(),m2=String(now2.getMonth()+1).padStart(2,'0'),ld=new Date(y2,now2.getMonth()+1,0).getDate();const ef=document.getElementById('exsch-from');if(ef)ef.value=y2+'-'+m2+'-01';const et=document.getElementById('exsch-to');if(et)et.value=y2+'-'+m2+'-'+String(ld).padStart(2,'0');}
   if(p==='history'){document.getElementById('hist-month').value=new Date().toISOString().slice(0,7);renderHistory();}
@@ -3634,6 +3668,215 @@ window.openResetPw = openResetPw;
 window.closeResetPw = closeResetPw;
 window.checkPwMatch = checkPwMatch;
 window.doResetPw = doResetPw;
+
+
+// ── 通知 Badge ──
+function updateBadges(){
+  // ── 代課接課：所有人都能看（老師也要知道有幾筆待接）──
+  let pendingSub = 0;
+  (S.requests||[]).filter(r=>r.status==='approved'&&r.type==='leave').forEach(r=>{
+    r.sessions.forEach((s,i)=>{ if(!r.takers[i]) pendingSub++; });
+  });
+  const badgeSub = document.getElementById('badge-sub');
+  if(badgeSub){
+    badgeSub.textContent = pendingSub > 99 ? '99+' : pendingSub;
+    badgeSub.style.display = pendingSub > 0 ? 'inline-block' : 'none';
+  }
+
+  // ── 以下僅管理員 ──
+  if(!isAdm()) return;
+
+  // 審核申請：待審核的 requests
+  const pendingReview = (S.requests||[]).filter(r=>r.status==='pending').length;
+  const badgeReview = document.getElementById('badge-review');
+  if(badgeReview){
+    badgeReview.textContent = pendingReview > 99 ? '99+' : pendingReview;
+    badgeReview.style.display = pendingReview > 0 ? 'inline-block' : 'none';
+  }
+
+  // 講義庫存：待審核的 matRequests
+  const pendingMat = (S.matRequests||[]).filter(r=>r.status==='pending').length;
+  const badgeMat = document.getElementById('badge-mat');
+  if(badgeMat){
+    badgeMat.textContent = pendingMat > 99 ? '99+' : pendingMat;
+    badgeMat.style.display = pendingMat > 0 ? 'inline-block' : 'none';
+  }
+}
+window.updateBadges = updateBadges;
+
+
+// ── 師資財務總覽 ──
+function renderMyFinance(){
+  const el = document.getElementById('myfin-body'); if(!el) return;
+  const tid = cur.id;
+
+  // 建立年份選單
+  const yearSel = document.getElementById('myfin-year');
+  if(yearSel && !yearSel.innerHTML){
+    const now = new Date(), thisYear = now.getFullYear();
+    yearSel.innerHTML = [thisYear, thisYear-1, thisYear-2].map(y=>
+      `<option value="${y}">${y} 年</option>`).join('');
+  }
+  const year = parseInt(yearSel?.value) || new Date().getFullYear();
+
+  // 計算每個月的資料
+  const months = Array.from({length:12}, (_,i) => {
+    const m = String(i+1).padStart(2,'0');
+    return { label: `${year}年${i+1}月`, key: `${year}-${m}` };
+  });
+
+  let totalSeg=0, totalFee=0, totalDs=0, totalLec=0;
+  const rows = months.map(({label, key}) => {
+    const [y,m] = key.split('-').map(Number);
+    const daysInMonth = new Date(y,m,0).getDate();
+    const from = `${key}-01`;
+    const to = `${key}-${String(daysInMonth).padStart(2,'0')}`;
+    const courses = getMonthCourses(tid, null, from, to);
+    const seg = courses.length;
+    const fee = courses.reduce((a,c)=>a+c.fee, 0);
+    const ds  = courses.reduce((a,c)=>a+c.ds, 0);
+    const lec = courses.reduce((a,c)=>a+c.lec, 0);
+    totalSeg+=seg; totalFee+=fee; totalDs+=ds; totalLec+=lec;
+    return {label, key, seg, fee, ds, lec, courses};
+  }).filter(r => r.seg > 0);
+
+  if(!rows.length){
+    el.innerHTML = '<div class="empty" style="padding:24px"><div class="ei">💰</div>' + year + ' 年尚無課程資料</div>';
+    return;
+  }
+
+  // 統計卡片
+  let h = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px;border-bottom:1px solid var(--bdr)">
+    <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">${year} 年總段數</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${totalSeg}</div>
+    </div>
+    <div style="background:rgba(16,185,129,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">鐘點費合計</div>
+      <div style="font-size:1.3rem;font-weight:700;color:#10b981">$${totalFee.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(37,99,235,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">派師費合計</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">$${totalDs.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(245,158,11,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">講義費合計</div>
+      <div style="font-size:1.3rem;font-weight:700;color:#f59e0b">$${totalLec.toLocaleString()}</div>
+    </div>
+  </div>`;
+
+  // 月份明細表
+  h += `<table class="tbl" style="margin:0">
+    <thead><tr>
+      <th>月份</th>
+      <th style="text-align:center">段數</th>
+      <th style="text-align:right">鐘點費</th>
+      <th style="text-align:right">派師費</th>
+      <th style="text-align:right">講義費</th>
+      <th style="text-align:right">小計</th>
+      <th style="width:50px"></th>
+    </tr></thead>
+    <tbody>`;
+
+  rows.forEach((r,i) => {
+    const total = r.fee + r.ds + r.lec;
+    h += `<tr>
+      <td style="font-weight:600">${r.label}</td>
+      <td style="text-align:center">${r.seg}</td>
+      <td style="text-align:right;color:#10b981">$${r.fee.toLocaleString()}</td>
+      <td style="text-align:right;color:var(--blue)">$${r.ds.toLocaleString()}</td>
+      <td style="text-align:right">$${r.lec.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">$${total.toLocaleString()}</td>
+      <td><button class="btn bg bxs" onclick="toggleMyFinDetail(${i})" id="myfin-btn-${i}">展開</button></td>
+    </tr>
+    <tr id="myfin-detail-${i}" style="display:none">
+      <td colspan="7" style="padding:0;background:var(--bg2)">
+        <table style="width:100%;border-collapse:collapse;font-size:.76rem">
+          <thead><tr style="background:var(--bg2)">
+            <th style="padding:6px 12px;text-align:left">日期</th>
+            <th style="padding:6px 8px;text-align:left">班部</th>
+            <th style="padding:6px 8px;text-align:left">年段</th>
+            <th style="padding:6px 8px;text-align:left">時間</th>
+            <th style="padding:6px 8px;text-align:right">鐘點</th>
+            <th style="padding:6px 8px;text-align:right">派師</th>
+            <th style="padding:6px 8px;text-align:right">講義</th>
+          </tr></thead>
+          <tbody>
+          ${r.courses.map(c=>`<tr style="border-top:1px solid var(--bdr)">
+            <td style="padding:5px 12px">${c.date}</td>
+            <td style="padding:5px 8px">${c.dept}${c.branch}</td>
+            <td style="padding:5px 8px">${c.grade}</td>
+            <td style="padding:5px 8px">${c.start}–${c.end}</td>
+            <td style="padding:5px 8px;text-align:right;color:#10b981">$${c.fee}</td>
+            <td style="padding:5px 8px;text-align:right;color:var(--blue)">$${c.ds}</td>
+            <td style="padding:5px 8px;text-align:right">$${c.lec}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </td>
+    </tr>`;
+  });
+
+  h += `<tr style="border-top:2px solid var(--bdr);font-weight:700;background:var(--bg2)">
+    <td>全年合計</td>
+    <td style="text-align:center">${totalSeg}</td>
+    <td style="text-align:right;color:#10b981">$${totalFee.toLocaleString()}</td>
+    <td style="text-align:right;color:var(--blue)">$${totalDs.toLocaleString()}</td>
+    <td style="text-align:right">$${totalLec.toLocaleString()}</td>
+    <td style="text-align:right">$${(totalFee+totalDs+totalLec).toLocaleString()}</td>
+    <td></td>
+  </tr></tbody></table>`;
+
+  el.innerHTML = h;
+  window._myFinRows = rows;
+  window._myFinYear = year;
+}
+
+function toggleMyFinDetail(i){
+  const row = document.getElementById('myfin-detail-'+i);
+  const btn = document.getElementById('myfin-btn-'+i);
+  if(!row||!btn) return;
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'table-row';
+  btn.textContent = isOpen ? '展開' : '收起';
+}
+
+async function exportMyFinance(){
+  if(!window._myFinRows || !window._myFinYear){ toast('請先載入資料'); return; }
+  const rows = window._myFinRows, year = window._myFinYear;
+  const wb = XLSX.utils.book_new();
+  // 年度總表
+  const sumData = [
+    [cur.name + ' — ' + year + ' 年收入總覽','','','','',''],
+    [],
+    ['月份','段數','鐘點費','派師費','講義費','小計'],
+    ...rows.map(r=>[r.label, r.seg, r.fee, r.ds, r.lec, r.fee+r.ds+r.lec]),
+    [],
+    ['全年合計',
+      rows.reduce((a,r)=>a+r.seg,0),
+      rows.reduce((a,r)=>a+r.fee,0),
+      rows.reduce((a,r)=>a+r.ds,0),
+      rows.reduce((a,r)=>a+r.lec,0),
+      rows.reduce((a,r)=>a+r.fee+r.ds+r.lec,0)]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sumData);
+  ws['!cols'] = [{wch:12},{wch:6},{wch:10},{wch:10},{wch:8},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, year+'年總表');
+  // 明細
+  const detData = [
+    ['月份','日期','班部','年段','時間','鐘點費','派師費','講義費'],
+    ...rows.flatMap(r=>r.courses.map(c=>[r.label, c.date, c.dept+c.branch, c.grade, c.start+'–'+c.end, c.fee, c.ds, c.lec]))
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(detData);
+  ws2['!cols'] = [{wch:10},{wch:12},{wch:14},{wch:7},{wch:12},{wch:10},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws2, '課程明細');
+  XLSX.writeFile(wb, cur.name + '_' + year + '年收入.xlsx');
+  toast('✅ 已匯出', true);
+}
+
+window.renderMyFinance = renderMyFinance;
+window.toggleMyFinDetail = toggleMyFinDetail;
+window.exportMyFinance = exportMyFinance;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
