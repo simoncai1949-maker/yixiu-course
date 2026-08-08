@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v81</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v82</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -3094,7 +3094,7 @@ function renderFinance(){
   rows.forEach((r,i)=>{
     const total=r.fee+r.ds+r.lec;
     // 抽成% = 派師費 / (鐘點費+派師費) 的百分比
-    const pct=r.fee+r.ds>0?Math.round(r.ds/(r.fee+r.ds)*100):0;
+    const pct=r.fee+r.ds+r.lec>0?Math.round((r.ds+r.lec)/(r.fee+r.ds+r.lec)*100):0;
     h+=`<tr>
       <td style="font-weight:600">${r.t.name}</td>
       <td style="text-align:center">${r.seg}</td>
@@ -3120,7 +3120,7 @@ function renderFinance(){
           </tr></thead>
           <tbody>
           ${r.courses.map(c=>{
-            const cp=c.fee+c.ds>0?Math.round(c.ds/(c.fee+c.ds)*100):0;
+            const cp=c.fee+c.ds+c.lec>0?Math.round((c.ds+c.lec)/(c.fee+c.ds+c.lec)*100):0;
             return`<tr style="border-top:1px solid var(--bdr)">
               <td style="padding:5px 12px">${c.date}</td>
               <td style="padding:5px 8px">${c.dept}${c.branch}</td>
@@ -3138,7 +3138,7 @@ function renderFinance(){
     </tr>`;
   });
 
-  const totalPct=totalFee+totalDs>0?Math.round(totalDs/(totalFee+totalDs)*100):0;
+  const totalPct=totalFee+totalDs+totalLec>0?Math.round((totalDs+totalLec)/(totalFee+totalDs+totalLec)*100):0;
   h+=`<tr style="border-top:2px solid var(--bdr);font-weight:700;background:var(--bg2)">
     <td>合計</td>
     <td style="text-align:center">${totalSeg}</td>
@@ -4003,7 +4003,7 @@ function renderFinanceSingle(){
 
   rows.forEach((r,i)=>{
     const total=r.fee+r.ds+r.lec;
-    const pct=r.fee+r.ds>0?Math.round(r.ds/(r.fee+r.ds)*100):0;
+    const pct=r.fee+r.ds+r.lec>0?Math.round((r.ds+r.lec)/(r.fee+r.ds+r.lec)*100):0;
     h+=`<tr>
       <td style="font-weight:600">${r.label}</td>
       <td style="text-align:center">${r.seg}</td>
@@ -4028,7 +4028,7 @@ function renderFinanceSingle(){
             <th style="padding:6px 8px;text-align:right">講義</th>
           </tr></thead><tbody>
           ${r.courses.map(c=>{
-            const cp=c.fee+c.ds>0?Math.round(c.ds/(c.fee+c.ds)*100):0;
+            const cp=c.fee+c.ds+c.lec>0?Math.round((c.ds+c.lec)/(c.fee+c.ds+c.lec)*100):0;
             return`<tr style="border-top:1px solid var(--bdr)">
               <td style="padding:5px 12px">${c.date}</td>
               <td style="padding:5px 8px">${c.dept}${c.branch}</td>
@@ -4079,13 +4079,13 @@ async function exportFinanceSingle(){
     [],
     ['月份','段數','鐘點費','派師費','抽成%','講義費','小計'],
     ...rows.map(r=>{
-      const pct=r.fee+r.ds>0?Math.round(r.ds/(r.fee+r.ds)*100):0;
+      const pct=r.fee+r.ds+r.lec>0?Math.round((r.ds+r.lec)/(r.fee+r.ds+r.lec)*100):0;
       return [r.label,r.seg,r.fee,r.ds,pct+'%',r.lec,r.fee+r.ds+r.lec];
     }),
     [],
     (()=>{
-      const tPct=rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0)>0?
-        Math.round(rows.reduce((a,r)=>a+r.ds,0)/(rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0))*100):0;
+      const tPct=rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0)+rows.reduce((a,r)=>a+r.lec,0)>0?
+        Math.round((rows.reduce((a,r)=>a+r.ds,0)+rows.reduce((a,r)=>a+r.lec,0))/(rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0)+rows.reduce((a,r)=>a+r.lec,0))*100):0;
       return ['全年合計',rows.reduce((a,r)=>a+r.seg,0),rows.reduce((a,r)=>a+r.fee,0),
         rows.reduce((a,r)=>a+r.ds,0),tPct+'%',rows.reduce((a,r)=>a+r.lec,0),
         rows.reduce((a,r)=>a+r.fee+r.ds+r.lec,0)];
