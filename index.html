@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v80</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v81</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -788,9 +788,24 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <div class="ch">
           <div class="ct"><div class="dot"></div>財務總覽</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;background:var(--bg2);border-radius:8px;padding:3px;gap:3px">
+              <button id="fin-tab-all" onclick="switchFinTab('all')"
+                style="padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:'Noto Sans TC',sans-serif;background:var(--navy);color:#fff;font-weight:600">全部師資</button>
+              <button id="fin-tab-single" onclick="switchFinTab('single')"
+                style="padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:'Noto Sans TC',sans-serif;background:none;color:var(--muted)">個別師資</button>
+            </div>
             <button class="btn bg bsm" onclick="exportFinance()">📥 匯出</button>
           </div>
         </div>
+        <!-- 個別師資選單（預設隱藏）-->
+        <div id="fin-single-bar" style="display:none;padding:10px 16px;border-bottom:1px solid var(--bdr);gap:8px;align-items:center">
+          <label style="font-size:.75rem;color:var(--muted)">師資</label>
+          <select id="fin-single-tid" onchange="renderFinanceSingle()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--bdr);border-radius:7px"></select>
+          <select id="fin-single-year" onchange="renderFinanceSingle()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--bdr);border-radius:7px"></select>
+          <button class="btn bg bsm" onclick="exportFinanceSingle()">📥 匯出</button>
+        </div>
+        <!-- 個別師資內容 -->
+        <div id="fin-single-body" style="display:none;padding:0"><div id="fin-single-content"></div></div>
         <!-- 篩選列 -->
         <div style="padding:10px 16px;border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:4px">
@@ -3877,6 +3892,222 @@ async function exportMyFinance(){
 window.renderMyFinance = renderMyFinance;
 window.toggleMyFinDetail = toggleMyFinDetail;
 window.exportMyFinance = exportMyFinance;
+
+
+// ── 財務總覽：個別師資模式 ──
+let _finTab = 'all';
+
+function switchFinTab(tab){
+  _finTab = tab;
+  // Tab 按鈕樣式
+  const btnAll = document.getElementById('fin-tab-all');
+  const btnSingle = document.getElementById('fin-tab-single');
+  const allStyle = 'padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:\'Noto Sans TC\',sans-serif;';
+  if(btnAll){ btnAll.style.cssText = allStyle + (tab==='all' ? 'background:var(--navy);color:#fff;font-weight:600' : 'background:none;color:var(--muted)'); }
+  if(btnSingle){ btnSingle.style.cssText = allStyle + (tab==='single' ? 'background:var(--navy);color:#fff;font-weight:600' : 'background:none;color:var(--muted)'); }
+
+  // 顯示/隱藏對應區塊
+  const filterRow = document.querySelector('#pg-finance .card > div:nth-child(3)'); // 篩選列
+  const mainBody = document.getElementById('fin-summary');
+  const singleBar = document.getElementById('fin-single-bar');
+  const singleBody = document.getElementById('fin-single-body');
+
+  if(tab === 'all'){
+    if(filterRow) filterRow.style.display = '';
+    if(mainBody) mainBody.parentElement.style.display = '';
+    if(singleBar) singleBar.style.display = 'none';
+    if(singleBody) singleBody.style.display = 'none';
+    renderFinance();
+  } else {
+    if(filterRow) filterRow.style.display = 'none';
+    if(mainBody) mainBody.parentElement.style.display = 'none';
+    if(singleBar){ singleBar.style.display = 'flex'; }
+    if(singleBody) singleBody.style.display = 'block';
+    // 填入師資選單
+    const tidSel = document.getElementById('fin-single-tid');
+    if(tidSel && !tidSel.innerHTML){
+      tidSel.innerHTML = S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+    }
+    // 填入年份選單
+    const yearSel = document.getElementById('fin-single-year');
+    if(yearSel && !yearSel.innerHTML){
+      const y = new Date().getFullYear();
+      yearSel.innerHTML = [y, y-1, y-2].map(yr=>`<option value="${yr}">${yr} 年</option>`).join('');
+    }
+    renderFinanceSingle();
+  }
+}
+
+function renderFinanceSingle(){
+  const el = document.getElementById('fin-single-content'); if(!el) return;
+  const tid = document.getElementById('fin-single-tid')?.value;
+  const year = parseInt(document.getElementById('fin-single-year')?.value) || new Date().getFullYear();
+  const teacher = S.teachers.find(t=>t.id===tid);
+  if(!tid || !teacher){ el.innerHTML='<div class="empty" style="padding:20px">請選擇師資</div>'; return; }
+
+  // 計算每個月
+  const months = Array.from({length:12}, (_,i)=>{
+    const m = String(i+1).padStart(2,'0');
+    return { label:`${year}年${i+1}月`, key:`${year}-${m}` };
+  });
+
+  let totalSeg=0, totalFee=0, totalDs=0, totalLec=0;
+  const rows = months.map(({label,key})=>{
+    const [y,m] = key.split('-').map(Number);
+    const days = new Date(y,m,0).getDate();
+    const from = `${key}-01`, to = `${key}-${String(days).padStart(2,'0')}`;
+    const courses = getMonthCourses(tid, null, from, to);
+    const seg=courses.length, fee=courses.reduce((a,c)=>a+c.fee,0),
+          ds=courses.reduce((a,c)=>a+c.ds,0), lec=courses.reduce((a,c)=>a+c.lec,0);
+    totalSeg+=seg; totalFee+=fee; totalDs+=ds; totalLec+=lec;
+    return {label,key,seg,fee,ds,lec,courses};
+  }).filter(r=>r.seg>0);
+
+  if(!rows.length){
+    el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">💰</div>'+teacher.name+' 在 '+year+' 年無課程資料</div>';
+    return;
+  }
+
+  const totalPct = totalFee+totalDs>0 ? Math.round(totalDs/(totalFee+totalDs)*100) : 0;
+
+  let h = `<div style="padding:10px 16px;font-size:.8rem;color:var(--navy);font-weight:600;border-bottom:1px solid var(--bdr)">
+    ${teacher.name}　${year} 年收入　抽成比例：<span style="color:${totalPct>=30?'#ef4444':totalPct>=20?'#f59e0b':'#10b981'};font-weight:700">${totalPct}%</span>
+  </div>`;
+
+  h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px;border-bottom:1px solid var(--bdr)">
+    <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">年度段數</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">${totalSeg}</div>
+    </div>
+    <div style="background:rgba(16,185,129,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">鐘點費（老師）</div>
+      <div style="font-size:1.3rem;font-weight:700;color:#10b981">$${totalFee.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(37,99,235,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">派師費（易學）</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">$${totalDs.toLocaleString()}</div>
+    </div>
+    <div style="background:rgba(245,158,11,.08);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">講義費</div>
+      <div style="font-size:1.3rem;font-weight:700;color:#f59e0b">$${totalLec.toLocaleString()}</div>
+    </div>
+  </div>`;
+
+  h += `<table class="tbl" style="margin:0"><thead><tr>
+    <th>月份</th><th style="text-align:center">段數</th>
+    <th style="text-align:right">鐘點費</th><th style="text-align:right">派師費</th>
+    <th style="text-align:right;color:#60a5fa">抽成%</th>
+    <th style="text-align:right">講義費</th><th style="text-align:right">小計</th>
+    <th style="width:50px"></th>
+  </tr></thead><tbody>`;
+
+  rows.forEach((r,i)=>{
+    const total=r.fee+r.ds+r.lec;
+    const pct=r.fee+r.ds>0?Math.round(r.ds/(r.fee+r.ds)*100):0;
+    h+=`<tr>
+      <td style="font-weight:600">${r.label}</td>
+      <td style="text-align:center">${r.seg}</td>
+      <td style="text-align:right;color:#10b981">$${r.fee.toLocaleString()}</td>
+      <td style="text-align:right;color:var(--blue)">$${r.ds.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600;color:${pct>=30?'#ef4444':pct>=20?'#f59e0b':'#10b981'}">${pct}%</td>
+      <td style="text-align:right">$${r.lec.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">$${total.toLocaleString()}</td>
+      <td><button class="btn bg bxs" onclick="toggleSingleFinDetail(${i})" id="sfin-btn-${i}">展開</button></td>
+    </tr>
+    <tr id="sfin-detail-${i}" style="display:none">
+      <td colspan="8" style="padding:0;background:var(--bg2)">
+        <table style="width:100%;border-collapse:collapse;font-size:.76rem">
+          <thead><tr style="background:var(--bg2)">
+            <th style="padding:6px 12px;text-align:left">日期</th>
+            <th style="padding:6px 8px;text-align:left">班部</th>
+            <th style="padding:6px 8px;text-align:left">年段</th>
+            <th style="padding:6px 8px;text-align:left">時間</th>
+            <th style="padding:6px 8px;text-align:right">鐘點</th>
+            <th style="padding:6px 8px;text-align:right">派師</th>
+            <th style="padding:6px 8px;text-align:right">抽成%</th>
+            <th style="padding:6px 8px;text-align:right">講義</th>
+          </tr></thead><tbody>
+          ${r.courses.map(c=>{
+            const cp=c.fee+c.ds>0?Math.round(c.ds/(c.fee+c.ds)*100):0;
+            return`<tr style="border-top:1px solid var(--bdr)">
+              <td style="padding:5px 12px">${c.date}</td>
+              <td style="padding:5px 8px">${c.dept}${c.branch}</td>
+              <td style="padding:5px 8px">${c.grade}</td>
+              <td style="padding:5px 8px">${c.start}–${c.end}</td>
+              <td style="padding:5px 8px;text-align:right;color:#10b981">$${c.fee}</td>
+              <td style="padding:5px 8px;text-align:right;color:var(--blue)">$${c.ds}</td>
+              <td style="padding:5px 8px;text-align:right;font-weight:600">${cp}%</td>
+              <td style="padding:5px 8px;text-align:right">$${c.lec}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </td>
+    </tr>`;
+  });
+
+  h += `<tr style="border-top:2px solid var(--bdr);font-weight:700;background:var(--bg2)">
+    <td>全年合計</td><td style="text-align:center">${totalSeg}</td>
+    <td style="text-align:right;color:#10b981">$${totalFee.toLocaleString()}</td>
+    <td style="text-align:right;color:var(--blue)">$${totalDs.toLocaleString()}</td>
+    <td style="text-align:right;color:${totalPct>=30?'#ef4444':totalPct>=20?'#f59e0b':'#10b981'};font-weight:700">${totalPct}%</td>
+    <td style="text-align:right">$${totalLec.toLocaleString()}</td>
+    <td style="text-align:right">$${(totalFee+totalDs+totalLec).toLocaleString()}</td>
+    <td></td>
+  </tr></tbody></table>`;
+
+  el.innerHTML = h;
+  window._sfinRows = rows; window._sfinTid = tid; window._sfinYear = year;
+}
+
+function toggleSingleFinDetail(i){
+  const row=document.getElementById('sfin-detail-'+i);
+  const btn=document.getElementById('sfin-btn-'+i);
+  if(!row||!btn)return;
+  const isOpen=row.style.display!=='none';
+  row.style.display=isOpen?'none':'table-row';
+  btn.textContent=isOpen?'展開':'收起';
+}
+
+async function exportFinanceSingle(){
+  if(!window._sfinRows){ toast('請先選擇師資'); return; }
+  const rows=window._sfinRows, tid=window._sfinTid, year=window._sfinYear;
+  const teacher=S.teachers.find(t=>t.id===tid);
+  const wb=XLSX.utils.book_new();
+  const sumData=[
+    [teacher?.name+' — '+year+' 年收入總覽','','','','','',''],
+    [],
+    ['月份','段數','鐘點費','派師費','抽成%','講義費','小計'],
+    ...rows.map(r=>{
+      const pct=r.fee+r.ds>0?Math.round(r.ds/(r.fee+r.ds)*100):0;
+      return [r.label,r.seg,r.fee,r.ds,pct+'%',r.lec,r.fee+r.ds+r.lec];
+    }),
+    [],
+    (()=>{
+      const tPct=rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0)>0?
+        Math.round(rows.reduce((a,r)=>a+r.ds,0)/(rows.reduce((a,r)=>a+r.fee,0)+rows.reduce((a,r)=>a+r.ds,0))*100):0;
+      return ['全年合計',rows.reduce((a,r)=>a+r.seg,0),rows.reduce((a,r)=>a+r.fee,0),
+        rows.reduce((a,r)=>a+r.ds,0),tPct+'%',rows.reduce((a,r)=>a+r.lec,0),
+        rows.reduce((a,r)=>a+r.fee+r.ds+r.lec,0)];
+    })()
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(sumData);
+  ws['!cols']=[{wch:12},{wch:6},{wch:10},{wch:10},{wch:8},{wch:8},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,year+'年總表');
+  const detData=[
+    ['月份','日期','班部','年段','時間','鐘點費','派師費','講義費'],
+    ...rows.flatMap(r=>r.courses.map(c=>[r.label,c.date,c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee,c.ds,c.lec]))
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(detData);
+  XLSX.utils.book_append_sheet(wb,ws2,'課程明細');
+  XLSX.writeFile(wb,(teacher?.name||'師資')+'_'+year+'年收入.xlsx');
+  toast('✅ 已匯出',true);
+}
+
+window.switchFinTab=switchFinTab;
+window.renderFinanceSingle=renderFinanceSingle;
+window.toggleSingleFinDetail=toggleSingleFinDetail;
+window.exportFinanceSingle=exportFinanceSingle;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
