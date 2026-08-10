@@ -239,7 +239,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <input type="password" id="rp-pw2" placeholder="再輸入一次新密碼" oninput="checkPwMatch()">
       </div>
       <div id="rp-match-msg" style="font-size:.73rem;min-height:18px;margin-bottom:8px"></div>
-      <button id="rp-submit-btn" onclick="doResetPw()"
+      <button id="rp-submit-btn" onclick="doForgotPw()"
         style="width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:.88rem;font-weight:600;font-family:'Noto Sans TC',sans-serif;opacity:.5" disabled>
         確認重設密碼
       </button>
@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v87</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v89</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -1099,7 +1099,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const ADMIN_PW = 'alex8888@';
+let ADMIN_PW = 'alex8888@'; // 可從 Firebase config 覆蓋
 const ADMIN_ID = 'admin';
 let S = { teachers:[], courses:[], recurring:[], spots:[], requests:[], history:[], journals:[], holidays:[], presence:[], messages:[], materials:[], matRequests:[] };
 let cur = null;
@@ -1142,7 +1142,11 @@ function safeDelete(col, id, confirmMsg) {
 
 function setupListeners() {
   unsubscribers.forEach(u=>u()); unsubscribers=[];
-  ['teachers','courses','recurring','spots','requests','history','journals','holidays','presence','messages','materials','matRequests'].forEach(col=>{
+  // 讀管理員設定（密碼）
+onSnapshot(doc(db,'config','admin'), snap=>{
+  if(snap.exists()&&snap.data().pw) ADMIN_PW=snap.data().pw;
+});
+['teachers','courses','recurring','spots','requests','history','journals','holidays','presence','messages','materials','matRequests'].forEach(col=>{
     const unsub=onSnapshot(collection(db,col), snap=>{
       S[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
       setSyncStatus('ok'); refreshPage();
@@ -3729,15 +3733,24 @@ window.resetFeeMode_=resetFeeMode_;
 function openResetPw(){
   const sel = document.getElementById('rp-sel');
   if(sel){
+    const teacherOpts = S.teachers.length > 0
+      ? S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')
+      : '<option disabled>（載入中，請稍後再試）</option>';
     sel.innerHTML = '<option value="">— 選擇姓名 —</option>' +
-      S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+      '<option value="__admin__">易學國文（管理員）</option>' +
+      teacherOpts;
   }
-  document.getElementById('rp-pw1').value = '';
-  document.getElementById('rp-pw2').value = '';
-  document.getElementById('rp-match-msg').textContent = '';
+  const pw1 = document.getElementById('rp-pw1');
+  const pw2 = document.getElementById('rp-pw2');
+  const msg = document.getElementById('rp-match-msg');
   const btn = document.getElementById('rp-submit-btn');
+  if(pw1) pw1.value = '';
+  if(pw2) pw2.value = '';
+  if(msg) msg.textContent = '';
   if(btn){ btn.disabled=true; btn.style.opacity='0.5'; }
-  document.getElementById('ov-reset-pw').classList.add('open');
+  const modal = document.getElementById('ov-reset-pw');
+  if(modal) modal.classList.add('open');
+  else { console.error('ov-reset-pw modal not found'); toast('系統錯誤：找不到重設密碼視窗'); }
 }
 
 function closeResetPw(){
@@ -3780,8 +3793,13 @@ async function doForgotPw(){
   if(!tid){ toast('請選擇姓名'); return; }
   if(!pw1 || pw1.length < 4){ toast('密碼至少需要 4 個字元'); return; }
   if(pw1 !== pw2){ toast('兩次密碼不一致，請重新輸入'); return; }
-  // 存入 Firebase（與現有密碼存儲方式一致）
-  await fsUpdate('teachers', tid, { pw: pw1 });
+  if(tid === '__admin__'){
+    // 管理員密碼存在 Firebase config collection
+    await setDoc(doc(db,'config','admin'), { pw: pw1 });
+    ADMIN_PW = pw1; // 立即生效
+  } else {
+    await fsUpdate('teachers', tid, { pw: pw1 });
+  }
   closeResetPw();
   toast('✅ 密碼已成功重設，請用新密碼登入', true);
 }
@@ -3789,6 +3807,7 @@ async function doForgotPw(){
 window.openResetPw = openResetPw;
 window.closeResetPw = closeResetPw;
 window.checkPwMatch = checkPwMatch;
+window.doForgotPw = doForgotPw;
 window.doResetPw = doResetPw;
 
 
