@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v85</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v87</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -739,8 +739,11 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div class="card">
         <div class="ch">
           <div class="ct"><div class="dot"></div>我的收入總覽</div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="myfin-year" onchange="renderMyFinance()" style="font-size:.8rem;padding:4px 8px;border:1px solid var(--bdr);border-radius:6px"></select>
+            <input type="text" id="myfin-search" placeholder="🔍 關鍵字（班部/年段）" oninput="renderMyFinance()"
+              style="font-size:.78rem;padding:4px 10px;border:1px solid var(--bdr);border-radius:6px;width:160px">
+            <button class="btn bg bsm" onclick="clearMyFinSearch()">✕</button>
             <button class="btn bg bsm" onclick="exportMyFinance()">📥 匯出</button>
           </div>
         </div>
@@ -1493,6 +1496,9 @@ function openEditRecModal(id){
   const allRadio=document.querySelector('input[name=er-scope][value=all]');
   if(allRadio)allRadio.checked=true;
   const sdEl=document.getElementById('er-scope-date');if(sdEl)sdEl.value='';
+  // 顯示/隱藏轉讓按鈕
+  const erXferBtn=document.getElementById('er-transfer-btn');
+  if(erXferBtn) erXferBtn.style.display=(!isAdm()&&id)?'inline-flex':'none';
   openOv('ov-edit-rec');
 }
 async function saveEditRec(){
@@ -1548,7 +1554,9 @@ function openEditSpot(id){editSpotId=id;const s=S.spots.find(x=>x.id===id);if(!s
   if(esTidRow) esTidRow.style.display=isAdm()?'block':'none';
   const esTidSel=document.getElementById('es-tid');
   if(esTidSel){esTidSel.innerHTML=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');esTidSel.value=s.tid||'';}
-  resetFeeMode_('es'); document.getElementById('es-fee').value=s.fee||0;document.getElementById('es-ds').value=s.ds||0;document.getElementById('es-lec').value=s.lec||0;openOv('ov-edit-spot');}
+  resetFeeMode_('es'); document.getElementById('es-fee').value=s.fee||0;document.getElementById('es-ds').value=s.ds||0;document.getElementById('es-lec').value=s.lec||0;const esXferBtn=document.getElementById('es-transfer-btn');
+  if(esXferBtn) esXferBtn.style.display=(!isAdm()&&id)?'inline-flex':'none';
+  openOv('ov-edit-spot');}
 async function saveEditSpot(){if(!editSpotId)return;const updates={date:document.getElementById('es-date').value,start:document.getElementById('es-start').value,end:document.getElementById('es-end').value,dept:document.getElementById('es-dept').value.trim(),branch:document.getElementById('es-branch').value.trim(),grade:document.getElementById('es-grade').value.trim(),fee:parseFloat(document.getElementById('es-fee').value)||0,ds:getFeeAmount_('es','ds'),lec:getFeeAmount_('es','lec')};if(!updates.dept||!updates.branch||!updates.grade||!updates.date){toast('請填寫完整資訊');return;}if(isAdm()){const newTid=document.getElementById('es-tid')?.value;if(newTid)updates.tid=newTid;}
   await fsUpdate('spots',editSpotId,updates);closeOv('ov-edit-spot');toast('✅ 點狀課程已更新',true);}
 async function bulkDeleteSpots(){const ids=Array.from(document.querySelectorAll('.spot-cb:checked')).map(x=>x.dataset.id);if(!ids.length){toast('請先勾選要刪除的課程');return;}if(!confirm('確定刪除選取的 '+ids.length+' 堂點狀課程？'))return;await Promise.all(ids.map(id=>fsDel('spots',id)));toast('已刪除 '+ids.length+' 堂',true);}
@@ -1872,7 +1880,7 @@ const MZ=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月'
 const DZ=['日','一','二','三','四','五','六'];
 const SLOTS=[];for(let h=8;h<=22;h++)SLOTS.push(String(h).padStart(2,'0')+':00');
 const SECTIONS=[{label:'上午',from:'08:00',to:'12:59'},{label:'中午',from:'13:00',to:'13:59'},{label:'下午',from:'14:00',to:'22:00'}];
-let calY,calM,calView='month',calWOff=0,calDay=null;
+let calY,calM,calView='month',calWOff=0,calDay=new Date().toISOString().slice(0,10);
 function initCal(){const n=new Date();calY=n.getFullYear();calM=n.getMonth();}
 function calStep(d){
   if(calView==='month'){calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}}
@@ -2249,7 +2257,7 @@ function renderDay(){
       if(endMin<=0||startMin>=(END_H-START_H)*60)return;
       const top=Math.max(0,startMin/60*ROW_H),height=Math.max(18,(endMin-startMin)/60*ROW_H-2);
       const cl={reg:'ev-reg',rec:'ev-rec',spot:'ev-reg',pend:'ev-pend',ok:'ev-ok',take:'ev-take'}[ev.type]||'ev-reg';
-      h+=`<div class="wev ${cl}" onclick="showDay('${ds}')" style="position:absolute;top:${top}px;left:2px;right:2px;height:${height}px;overflow:hidden;cursor:pointer;z-index:2;border-radius:4px;padding:2px 4px;font-size:.62rem;line-height:1.3;box-sizing:border-box;${cur&&ev.tid===cur.id?'font-weight:700':'opacity:.85'}"><div style="font-weight:600">${ev.start}–${ev.end}</div><div>${ev.label}</div></div>`;
+      h+=`<div class="wev ${cl}" onclick="openCalEventEdit(ev,'${ds}')" style="position:absolute;top:${top}px;left:2px;right:2px;height:${height}px;overflow:hidden;cursor:pointer;z-index:2;border-radius:4px;padding:2px 4px;font-size:.62rem;line-height:1.3;box-sizing:border-box;${cur&&ev.tid===cur.id?'font-weight:700':'opacity:.85'}"><div style="font-weight:600">${ev.start}–${ev.end}</div><div>${ev.label}</div></div>`;
     });
     h+=`</div>`;
   });
@@ -3823,6 +3831,8 @@ window.updateBadges = updateBadges;
 function renderMyFinance(){
   const el = document.getElementById('myfin-body'); if(!el) return;
   const tid = cur.id;
+  const kw = (document.getElementById('myfin-search')?.value||'').trim().toLowerCase();
+  const kwMatch = (c) => !kw || (c.dept+c.branch+c.grade+c.start+c.end+(c.note||'')).toLowerCase().includes(kw);
 
   // 建立年份選單
   const yearSel = document.getElementById('myfin-year');
@@ -3845,7 +3855,7 @@ function renderMyFinance(){
     const daysInMonth = new Date(y,m,0).getDate();
     const from = `${key}-01`;
     const to = `${key}-${String(daysInMonth).padStart(2,'0')}`;
-    const courses = getMonthCourses(tid, null, from, to);
+    const courses = getMonthCourses(tid, null, from, to).filter(kwMatch);
     const seg = courses.length;
     const fee = courses.reduce((a,c)=>a+c.fee, 0);
     const ds  = courses.reduce((a,c)=>a+c.ds, 0);
@@ -3989,6 +3999,7 @@ async function exportMyFinance(){
 }
 
 window.renderMyFinance = renderMyFinance;
+window.clearMyFinSearch = function(){ const el=document.getElementById('myfin-search');if(el){el.value='';renderMyFinance();} };
 window.toggleMyFinDetail = toggleMyFinDetail;
 window.exportMyFinance = exportMyFinance;
 
@@ -4092,6 +4103,7 @@ function renderFinanceSingle(){
     </div>
   </div>`;
 
+  if(kw) h += `<div style="padding:8px 16px;font-size:.75rem;color:var(--blue);background:var(--blight);border-bottom:1px solid var(--bdr)">🔍 篩選：「${kw}」的課程</div>`;
   h += `<table class="tbl" style="margin:0"><thead><tr>
     <th>月份</th><th style="text-align:center">段數</th>
     <th style="text-align:right">鐘點費</th><th style="text-align:right">派師費</th>
@@ -4266,6 +4278,48 @@ async function submitTransfer(){
 
 window.openTransfer = openTransfer;
 window.submitTransfer = submitTransfer;
+
+
+// ── 行事曆課程點擊編輯 ──
+function openCalEventEdit(ev, ds){
+  if(!ev) return;
+  // 只有 rec / spot / reg 類型才能編輯
+  if(!['rec','spot','reg'].includes(ev.type)){
+    // pend/ok/take 類型：顯示申請資訊
+    if(ev.req) openEditEvent(ev.type, ev.req.id, ev.si||0);
+    return;
+  }
+  const src = ev.srcCol==='spots'||ev.type==='spot' ? 'spot' : 'rec';
+  const id = ev.srcId || ev.id;
+  if(!id){ toast('找不到課程資料'); return; }
+
+  if(src==='rec'){
+    openEditRecModal(id);
+    // 記錄當前日期供單堂操作
+    window._calEditDate = ds;
+  } else {
+    openEditSpot(id);
+  }
+}
+window.openCalEventEdit = openCalEventEdit;
+function openTransferFromEdit(){
+  // 從編輯常態課 modal 觸發轉讓
+  const id = editRecId;
+  const date = window._calEditDate || new Date().toISOString().slice(0,10);
+  if(!id){ toast('找不到課程'); return; }
+  closeOv('ov-edit-rec');
+  openTransfer('rec', id, date, '');
+}
+function openTransferFromEditSpot(){
+  const id = editSpotId;
+  if(!id){ toast('找不到課程'); return; }
+  const s = S.spots.find(x=>x.id===id);
+  closeOv('ov-edit-spot');
+  if(s) openTransfer('spot', id, s.date, s.start);
+}
+window.openTransferFromEdit=openTransferFromEdit;
+window.openTransferFromEditSpot=openTransferFromEditSpot;
+
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
@@ -4463,7 +4517,15 @@ function isHoliday(ds, tid){
         </label>
       </div>
     </div>
-    <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-rec')">取消</button><button class="btn bn" onclick="saveEditRec()">儲存</button></div>
+    <div class="mf" style="justify-content:space-between">
+    <div>
+      <button id="er-transfer-btn" class="btn bs" style="display:none" onclick="openTransferFromEdit()">🔄 申請轉讓</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" onclick="closeOv('ov-edit-rec')">取消</button>
+      <button class="btn bn" onclick="saveEditRec()">儲存</button>
+    </div>
+  </div>
   </div>
 </div>
 
@@ -4554,7 +4616,15 @@ function isHoliday(ds, tid){
         </div>
       </div>
     </div>
-    <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-spot')">取消</button><button class="btn bn" onclick="saveEditSpot()">儲存</button></div>
+    <div class="mf" style="justify-content:space-between">
+    <div>
+      <button id="es-transfer-btn" class="btn bs" style="display:none" onclick="openTransferFromEditSpot()">🔄 申請轉讓</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bg" onclick="closeOv('ov-edit-spot')">取消</button>
+      <button class="btn bn" onclick="saveEditSpot()">儲存</button>
+    </div>
+  </div>
   </div>
 </div>
 
