@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v82</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v85</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -392,8 +392,11 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
               <button class="vbtn" id="mc-sort-class" onclick="setMcSort('class')">依班部</button>
             </div>
             <select id="mc-t-sel" onchange="renderMyCourses()" style="display:none;font-size:.75rem;padding:3px 8px;border-radius:6px;border:1px solid var(--bdr)"><option value="">— 全部師資 —</option></select>
-            <div id="mc-list-ctrl">
+            <div id="mc-list-ctrl" style="display:flex;align-items:center;gap:6px">
               <input type="month" id="mc-month" onchange="renderMyCourses()" style="font-size:.78rem;padding:4px 8px;width:auto" />
+              <input type="text" id="mc-search" placeholder="🔍 關鍵字（班部/年段/時間）" oninput="renderMyCourses()"
+                style="font-size:.78rem;padding:4px 10px;border:1px solid var(--bdr);border-radius:6px;width:180px">
+              <button class="btn bg bsm" onclick="clearMcSearch()">✕</button>
             </div>
             <div id="mc-cal-ctrl" style="display:none;align-items:center;gap:5px">
               <button class="btn bg bsm" onclick="mcCalStep(-1)">‹</button>
@@ -1047,6 +1050,36 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   </div>
 </div>
 
+<!-- 轉讓申請 modal -->
+<div class="ov" id="ov-transfer">
+  <div class="modal" style="max-width:440px">
+    <div class="mh"><div class="mht">🔄 申請轉讓課程</div><button class="mcls" onclick="closeOv('ov-transfer')">✕</button></div>
+    <div class="mb">
+      <div id="transfer-info" style="background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.8rem;color:var(--navy)"></div>
+      <div class="fg">
+        <label>轉讓給</label>
+        <select id="transfer-to-tid" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;font-size:.84rem"></select>
+      </div>
+      <div class="fg" id="transfer-scope-row">
+        <label>轉讓範圍（常態課）</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <label class="ckr"><input type="radio" name="transfer-scope" value="single" checked> 只轉這一堂（<span id="transfer-date-label"></span>）</label>
+          <label class="ckr"><input type="radio" name="transfer-scope" value="future"> 從這堂起，往後所有堂次</label>
+        </div>
+      </div>
+      <div class="fg">
+        <label>說明（選填）</label>
+        <input type="text" id="transfer-note" placeholder="說明原因">
+      </div>
+      <div class="notice">師資申請後需管理員審核，核准後才正式換人。</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+        <button class="btn bg" onclick="closeOv('ov-transfer')">取消</button>
+        <button class="btn bn" onclick="submitTransfer()">送出申請</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -1451,6 +1484,10 @@ function openEditRecModal(id){
   setVal('er-dept',r.dept);setVal('er-branch',r.branch);setVal('er-grade',r.grade);
   setVal('er-start',r.start);setVal('er-end',r.end);setVal('er-wd',r.wd);
   setVal('er-freq',r.freq||'weekly');setVal('er-from',r.from||'');setVal('er-to',r.to||'');
+  const erTidRow=document.getElementById('er-tid-row');
+  if(erTidRow) erTidRow.style.display=isAdm()?'block':'none';
+  const erTidSel=document.getElementById('er-tid');
+  if(erTidSel){erTidSel.innerHTML=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');erTidSel.value=r.tid||'';}
   resetFeeMode_('er'); setVal('er-fee',r.fee||0);setVal('er-ds',r.ds||0);setVal('er-lec',r.lec||0);
   // Reset scope to 'all'
   const allRadio=document.querySelector('input[name=er-scope][value=all]');
@@ -1507,8 +1544,13 @@ function renderSpotList(){
   el.innerHTML=`<div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap"><input type="checkbox" id="spot-sel-all" onchange="document.querySelectorAll('.spot-cb').forEach(x=>x.checked=this.checked)" style="accent-color:var(--blue)"><label for="spot-sel-all" style="font-size:.76rem;color:var(--muted);margin:0;cursor:pointer">全選</label><button class="btn bg bsm" onclick="openBulkEditSpot()">✏️ 批量編輯</button><button class="btn bdel bsm" onclick="bulkDeleteSpots()">🗑 批量刪除</button><span style="font-size:.72rem;color:var(--muted);margin-left:4px">共 ${spots.length} 堂</span></div><table class="tbl"><thead><tr><th style="width:30px"></th><th>日期</th><th>時間</th><th>班部+分校</th><th>年段</th><th style="width:80px"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 let editSpotId=null;
-function openEditSpot(id){editSpotId=id;const s=S.spots.find(x=>x.id===id);if(!s)return;document.getElementById('es-date').value=s.date||'';document.getElementById('es-start').value=s.start||'';document.getElementById('es-end').value=s.end||'';document.getElementById('es-dept').value=s.dept||'';document.getElementById('es-branch').value=s.branch||'';document.getElementById('es-grade').value=s.grade||'';resetFeeMode_('es'); document.getElementById('es-fee').value=s.fee||0;document.getElementById('es-ds').value=s.ds||0;document.getElementById('es-lec').value=s.lec||0;openOv('ov-edit-spot');}
-async function saveEditSpot(){if(!editSpotId)return;const updates={date:document.getElementById('es-date').value,start:document.getElementById('es-start').value,end:document.getElementById('es-end').value,dept:document.getElementById('es-dept').value.trim(),branch:document.getElementById('es-branch').value.trim(),grade:document.getElementById('es-grade').value.trim(),fee:parseFloat(document.getElementById('es-fee').value)||0,ds:getFeeAmount_('es','ds'),lec:getFeeAmount_('es','lec')};if(!updates.dept||!updates.branch||!updates.grade||!updates.date){toast('請填寫完整資訊');return;}await fsUpdate('spots',editSpotId,updates);closeOv('ov-edit-spot');toast('✅ 點狀課程已更新',true);}
+function openEditSpot(id){editSpotId=id;const s=S.spots.find(x=>x.id===id);if(!s)return;document.getElementById('es-date').value=s.date||'';document.getElementById('es-start').value=s.start||'';document.getElementById('es-end').value=s.end||'';document.getElementById('es-dept').value=s.dept||'';document.getElementById('es-branch').value=s.branch||'';document.getElementById('es-grade').value=s.grade||'';const esTidRow=document.getElementById('es-tid-row');
+  if(esTidRow) esTidRow.style.display=isAdm()?'block':'none';
+  const esTidSel=document.getElementById('es-tid');
+  if(esTidSel){esTidSel.innerHTML=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');esTidSel.value=s.tid||'';}
+  resetFeeMode_('es'); document.getElementById('es-fee').value=s.fee||0;document.getElementById('es-ds').value=s.ds||0;document.getElementById('es-lec').value=s.lec||0;openOv('ov-edit-spot');}
+async function saveEditSpot(){if(!editSpotId)return;const updates={date:document.getElementById('es-date').value,start:document.getElementById('es-start').value,end:document.getElementById('es-end').value,dept:document.getElementById('es-dept').value.trim(),branch:document.getElementById('es-branch').value.trim(),grade:document.getElementById('es-grade').value.trim(),fee:parseFloat(document.getElementById('es-fee').value)||0,ds:getFeeAmount_('es','ds'),lec:getFeeAmount_('es','lec')};if(!updates.dept||!updates.branch||!updates.grade||!updates.date){toast('請填寫完整資訊');return;}if(isAdm()){const newTid=document.getElementById('es-tid')?.value;if(newTid)updates.tid=newTid;}
+  await fsUpdate('spots',editSpotId,updates);closeOv('ov-edit-spot');toast('✅ 點狀課程已更新',true);}
 async function bulkDeleteSpots(){const ids=Array.from(document.querySelectorAll('.spot-cb:checked')).map(x=>x.dataset.id);if(!ids.length){toast('請先勾選要刪除的課程');return;}if(!confirm('確定刪除選取的 '+ids.length+' 堂點狀課程？'))return;await Promise.all(ids.map(id=>fsDel('spots',id)));toast('已刪除 '+ids.length+' 堂',true);}
 function openBulkEditSpot(){const ids=Array.from(document.querySelectorAll('.spot-cb:checked')).map(x=>x.dataset.id);if(!ids.length){toast('請先勾選要編輯的課程');return;}window._bulkSpotIds=ids;['bes-dept','bes-branch','bes-grade','bes-start','bes-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('bes-count').textContent='已選 '+ids.length+' 堂';openOv('ov-bulk-edit-spot');}
 async function saveBulkEditSpot(){const ids=window._bulkSpotIds||[];if(!ids.length)return;const dept=document.getElementById('bes-dept').value.trim(),branch=document.getElementById('bes-branch').value.trim(),grade=document.getElementById('bes-grade').value.trim(),start=document.getElementById('bes-start').value,end=document.getElementById('bes-end').value;const updates={};if(dept)updates.dept=dept;if(branch)updates.branch=branch;if(grade)updates.grade=grade;if(start)updates.start=start;if(end)updates.end=end;if(!Object.keys(updates).length){toast('請至少填寫一個要修改的欄位');return;}await Promise.all(ids.map(id=>fsUpdate('spots',id,updates)));closeOv('ov-bulk-edit-spot');toast('已更新 '+ids.length+' 堂課程',true);}
@@ -1531,6 +1573,8 @@ function mcCalStep(d){mcCalOffset+=d;renderMyCourses();}
 let mcSortBy='date'; // 'date' or 'class'
 function setMcSort(v){mcSortBy=v;document.getElementById('mc-sort-date').classList.toggle('on',v==='date');document.getElementById('mc-sort-class').classList.toggle('on',v==='class');renderMyCourses();}
 function renderMyCourses(){
+  const mcKw=(document.getElementById('mc-search')?.value||'').trim().toLowerCase();
+  const mcMatch=(c)=>!mcKw||(c.dept+c.branch+c.grade+c.start+c.end+(c.note||'')).toLowerCase().includes(mcKw);
   const el=document.getElementById('mc-list'),mv=document.getElementById('mc-month')?.value||'';
   const mcTsel=document.getElementById('mc-t-sel');
   const selectedTid=isAdm()&&mcTsel?mcTsel.value:'';
@@ -1541,7 +1585,7 @@ function renderMyCourses(){
   if(mcView==='cal'){renderMyCal(el,tid||cur.id);return;}
   let rows=[];
   const tids=showAll?S.teachers.map(t=>t.id):[tid||cur.id];
-  S.courses.filter(c=>tids.includes(c.tid)&&(!mv||c.date.startsWith(mv))).forEach(c=>rows.push({...c,src:'admin'}));
+  S.courses.filter(c=>tids.includes(c.tid)&&(!mv||c.date.startsWith(mv))&&mcMatch(c)).forEach(c=>rows.push({...c,src:'admin'}));
   S.spots.filter(c=>tids.includes(c.tid)&&(!mv||c.date.startsWith(mv))).forEach(c=>rows.push({...c,src:'spot'}));
   if(mv){const[y,m]=mv.split('-').map(Number),days=new Date(y,m,0).getDate();for(let d=1;d<=days;d++){const ds=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'),wd=parseLocalDate(ds).getDay();S.recurring.filter(r=>{if(!tids.includes(r.tid)||r.wd!==wd)return false;if(r.from&&ds<r.from)return false;if(r.to&&ds>r.to)return false;const freq=r.freq||'weekly';if(freq==='biweekly'&&r.from){const diff=Math.round((new Date(ds)-new Date(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return false;}if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;const cancelled=S.requests.some(req=>req.status==='approved'&&req.type==='cancel'&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));return !cancelled&&!isHoliday(ds,tid,r.id);}).forEach(r=>rows.push({...r,date:ds,src:'rec'}));}}
   // Sort
@@ -1559,11 +1603,12 @@ function renderMyCourses(){
     const editBtn=(c.src==='spot'&&c.id)?`<button class="btn bg bxs" onclick="openEditSpot('${c.id}')">✏️</button>`:(c.src==='rec'&&c.id)?`<button class="btn bg bxs" onclick="openEditRecModal('${c.id}')">✏️</button>`:'';
     // Delete button: spot→直接刪, rec→選擇單堂/之後/全部
     const delBtn=(c.src==='spot'&&c.id)?`<button class="btn bdel bxs" onclick="safeDelete('spots','${c.id}','確定刪除這堂課？')" title="刪除">🗑</button>`:(c.src==='rec'&&c.id)?`<button class="btn bdel bxs" onclick="openDelRecChoice('${c.id}','${c.date}')" title="刪除">🗑</button>`:'';
+    const xferBtn=!isAdm()&&c.id?`<button class="btn bs bxs" onclick="openTransfer('${c.src}','${c.id}','${c.date}','${c.start}')" title="轉讓">🔄</button>`:'';
     const jrnBtn=c.id?`<button class="btn ${hasJournal?'bok':'bg'} bxs" onclick="openMyCourseDetail('${c.src}','${c.id||''}','${c.date}','${c.start}')" title="${hasJournal?'已有日誌':'寫日誌'}">${hasJournal?'📝':'📄'}</button>`:'';
     // Quick cancel button - only for rec courses with a future date
     const isFuture=c.date>=new Date().toISOString().slice(0,10);
     const cancelBtn=(c.src==='rec'&&c.id&&isFuture)?`<button class="btn bdel bxs" onclick="quickCancelCourse('${c.id}','${c.date}','${c.start}')" title="申請停課">🚫</button>`:'';
-    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}${cancelBtn}${delBtn}</td></tr>`;
+    return`<tr style="cursor:pointer"><td>${c.date}</td><td>${c.start}–${c.end}</td><td>${c.dept} ${c.branch}</td><td>${c.grade}</td><td><span class="badge ${srcB}">${srcL}</span></td><td>${b}</td><td style="display:flex;gap:3px">${jrnBtn}${editBtn}${cancelBtn}${delBtn}${xferBtn}</td></tr>`;
   }).join('')+'</tbody></table>';
 }
 async function quickCancelCourse(recId, date, start){
@@ -1776,7 +1821,7 @@ async function doTake(){
 // REVIEW
 function rvTab(el,tab){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.getElementById('rv-pend').style.display=tab==='pend'?'block':'none';document.getElementById('rv-done').style.display=tab==='done'?'block':'none';}
 function renderReview(){
-  const tmap={leave:'請假（需代課）',adjust:'課程調動',cancel:'停課（取消）'},bmap={pending:'bp',approved:'ba',rejected:'br'},btxt={pending:'待審核',approved:'已核准',rejected:'已退回'};
+  const tmap={leave:'請假（需代課）',adjust:'課程調動',cancel:'停課（取消）',transfer:'轉讓申請'},bmap={pending:'bp',approved:'ba',rejected:'br'},btxt={pending:'待審核',approved:'已核准',rejected:'已退回'};
   const mk=(list,acts)=>list.length?list.map(r=>{
     const sl=r.sessions.map((s,i)=>{const tk=r.takers[i];return`・${s.date} ${s.start}–${s.end}　${s.dept} ${s.branch} ${s.grade}${tk?` <span style="color:var(--grn)">✓ ${tn(tk.tid)}</span>`:''}`}).join('<br>');
     const adminBtns=!acts&&isAdm()?`<div class="racts" style="flex-direction:column;gap:4px">${r.type==='leave'?r.sessions.map((s,i)=>!r.takers[i]?`<button class="btn bs bxs" onclick="openTake('${r.id}',${i})">指派代課</button>`:`<button class="btn bg bxs" onclick="openEditEvent('take','${r.id}',${i})">✏️ 編輯代課</button>`).join(''):''}<button class="btn bdel bxs" onclick="deleteRequest('${r.id}')">刪除</button></div>`:'';
@@ -1785,7 +1830,40 @@ function renderReview(){
   document.getElementById('rv-pend').innerHTML=mk(S.requests.filter(r=>r.status==='pending'),true);
   document.getElementById('rv-done').innerHTML=mk(S.requests.filter(r=>r.status!=='pending'),false);
 }
-async function approve(id){await fsUpdate('requests',id,{status:'approved'});const r=S.requests.find(x=>x.id===id);if(r)await logHistory('request','核准申請：'+tn(r.tid)+' - '+(r.type==='cancel'?'停課':r.type==='leave'?'請假':'調動'),ADMIN_ID);toast('✅ 已核准',true);}
+async function approve(id){
+  const req=S.requests.find(x=>x.id===id);
+  if(!req){toast('找不到申請');return;}
+  // 轉讓申請：需要額外處理
+  if(req.type==='transfer'){
+    const {src,toTid,scope,date,id:cid}=req;
+    if(src==='spot'){
+      await fsUpdate('spots',cid,{tid:toTid});
+    } else if(src==='rec'){
+      if(scope==='single'){
+        const r=S.recurring.find(x=>x.id===cid);
+        if(r){
+          await fsAdd('spots',{tid:toTid,date,start:r.start,end:r.end,dept:r.dept,branch:r.branch,grade:r.grade,fee:r.fee||0,ds:r.ds||0,lec:r.lec||0});
+          await fsAdd('requests',{tid:req.tid,type:'cancel',status:'approved',sessions:[{date,start:r.start,dept:r.dept,branch:r.branch,grade:r.grade}],takers:[],at:new Date().toISOString()});
+        }
+      } else {
+        const r=S.recurring.find(x=>x.id===cid);
+        if(r){
+          const prev=new Date(date);prev.setDate(prev.getDate()-1);
+          await fsUpdate('recurring',cid,{to:prev.toISOString().slice(0,10)});
+          await fsAdd('recurring',{tid:toTid,dept:r.dept,branch:r.branch,grade:r.grade,wd:r.wd,start:r.start,end:r.end,from:date,to:r.to||'',fee:r.fee||0,ds:r.ds||0,lec:r.lec||0,freq:r.freq||'weekly'});
+        }
+      }
+    }
+    await fsUpdate('requests',id,{status:'approved',reviewedAt:new Date().toISOString()});
+    await logHistory('request','核准轉讓：'+tn(req.tid)+'→'+tn(toTid),req.tid);
+    toast('✅ 已核准轉讓',true);
+    refreshPage();return;
+  }
+  // 一般申請
+  await fsUpdate('requests',id,{status:'approved'});
+  if(req)await logHistory('request','核准申請：'+tn(req.tid)+' - '+(req.type==='cancel'?'停課':req.type==='leave'?'請假':'其他'),req.tid);
+  toast('已核准',true);refreshPage();
+}
 async function reject(id){await fsUpdate('requests',id,{status:'rejected'});const r=S.requests.find(x=>x.id===id);if(r)await logHistory('request','退回申請：'+tn(r.tid),ADMIN_ID);toast('已退回');}
 async function deleteRequest(id){if(!confirm('確定要刪除這筆申請紀錄嗎？'))return;await fsDel('requests',id);toast('已刪除',true);}
 
@@ -2473,6 +2551,16 @@ function doExport(){
         req.sessions.some(sess=>sess.date===ds&&sess.start===s.start));
       if(!sCancelled){sn++;rows.push([sn,ds,tn(s.tid),s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
     });});
+  // 排序：先依日期，同一天再依開始時間
+  rows.sort((a,b)=>{
+    const dateA=a[1],dateB=b[1]; // index 1 = 日期
+    if(dateA!==dateB) return dateA.localeCompare(dateB);
+    const timeA=a[5],timeB=b[5]; // index 5 = 時間（格式 HH:MM–HH:MM）
+    return (timeA||'').localeCompare(timeB||'');
+  });
+  // 重新編號堂次
+  rows.forEach((r,i)=>r[0]=i+1);
+  sn=rows.length;
   if(!rows.length){toast('此期間無課程資料');return;}
   // wsData structure:
   // row 1: title, row 2: teacher, row 3: period, row 4: blank, row 5: header, row 6..N: data, row N+1: blank, row N+2: total
@@ -2577,7 +2665,8 @@ window.openEditSpot=openEditSpot; window.saveEditSpot=saveEditSpot;
 window.bulkDeleteSpots=bulkDeleteSpots; window.openBulkEditSpot=openBulkEditSpot; window.saveBulkEditSpot=saveBulkEditSpot;
 window.populateCopyFrom=populateCopyFrom; window.populateSpotFromRec=populateSpotFromRec; window.spFromRecChange=spFromRecChange;
 window.ncTab=ncTab;
-window.renderMyCourses=renderMyCourses; window.setMcView=setMcView; window.setMcCalView=setMcCalView; window.mcCalStep=mcCalStep; 
+window.renderMyCourses=renderMyCourses;
+window.clearMcSearch=function(){const el=document.getElementById('mc-search');if(el){el.value='';renderMyCourses();}}; window.setMcView=setMcView; window.setMcCalView=setMcCalView; window.mcCalStep=mcCalStep; 
 // ── NC CALENDAR ADD ──
 let ncCalY=new Date().getFullYear(), ncCalM=new Date().getMonth();
 function ncCalStep(d){ncCalM+=d;if(ncCalM<0){ncCalM=11;ncCalY--;}if(ncCalM>11){ncCalM=0;ncCalY++;}renderNcCal();}
@@ -3597,9 +3686,19 @@ function getFeeAmount_(prefix, field){
 }
 
 function resetFeeMode_(prefix){
-  if(!_feeModes[prefix]) return;
+  // 強制重設為元模式，不依賴舊狀態
   ['ds','lec'].forEach(f=>{
-    if(_feeModes[prefix][f]==='percent') toggleFeeMode_(prefix,f);
+    if(!_feeModes[prefix]) _feeModes[prefix]={ds:'amount',lec:'amount'};
+    _feeModes[prefix][f]='amount'; // 直接設為 amount
+    // 更新 UI
+    const btn=document.getElementById(prefix+'-'+f+'-mode');
+    const unit=document.getElementById(prefix+'-'+f+'-unit');
+    const inp=document.getElementById(prefix+'-'+f);
+    const prev=document.getElementById(prefix+'-'+f+'-prev');
+    if(btn){btn.textContent='% 切換';btn.style.color='var(--muted)';btn.style.borderColor='var(--bdr)';btn.style.background='var(--bg2)';}
+    if(unit)unit.textContent='元';
+    if(inp)inp.removeAttribute('max');
+    if(prev)prev.style.display='none';
   });
 }
 
@@ -4109,6 +4208,65 @@ window.renderFinanceSingle=renderFinanceSingle;
 window.toggleSingleFinDetail=toggleSingleFinDetail;
 window.exportFinanceSingle=exportFinanceSingle;
 
+
+// ── 課程轉讓 ──
+let _transferData = null;
+
+function openTransfer(src, id, date, start){
+  _transferData = {src, id, date, start};
+  const toSel = document.getElementById('transfer-to-tid');
+  const info = document.getElementById('transfer-info');
+  const scopeRow = document.getElementById('transfer-scope-row');
+  const dateLabel = document.getElementById('transfer-date-label');
+
+  // 找課程資料
+  let cname = '';
+  if(src==='rec'){
+    const r = S.recurring.find(x=>x.id===id);
+    if(r) cname = r.dept+r.branch+' '+r.grade+' '+r.start;
+  } else {
+    const s = S.spots.find(x=>x.id===id);
+    if(s) cname = s.dept+s.branch+' '+s.grade+' '+s.start;
+  }
+  if(info) info.innerHTML = '📚 <strong>'+cname+'</strong>　'+date;
+  if(dateLabel) dateLabel.textContent = date;
+
+  // 只有常態課才有範圍選項
+  if(scopeRow) scopeRow.style.display = src==='rec' ? 'block' : 'none';
+
+  // 填入其他老師（排除自己）
+  if(toSel){
+    toSel.innerHTML = S.teachers.filter(t=>t.id!==cur.id).map(t=>
+      `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+  document.getElementById('transfer-note').value = '';
+  openOv('ov-transfer');
+}
+
+async function submitTransfer(){
+  if(!_transferData){ toast('資料遺失，請重試'); return; }
+  const {src, id, date, start} = _transferData;
+  const toTid = document.getElementById('transfer-to-tid')?.value;
+  const scope = document.querySelector('input[name="transfer-scope"]:checked')?.value || 'single';
+  const note = document.getElementById('transfer-note')?.value || '';
+  if(!toTid){ toast('請選擇要轉讓的老師'); return; }
+
+  await fsAdd('requests', {
+    tid: cur.id,
+    type: 'transfer',
+    status: 'pending',
+    src, id, date, start, toTid, scope, note,
+    at: new Date().toISOString(),
+    sessions: [{date, start, dept:'', branch:'', grade:'', toTid}],
+    takers: []
+  });
+  closeOv('ov-transfer');
+  toast('✅ 轉讓申請已送出，等待管理員審核', true);
+}
+
+window.openTransfer = openTransfer;
+window.submitTransfer = submitTransfer;
+
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
 window.toggleRecCheck=toggleRecCheck;
@@ -4238,6 +4396,10 @@ function isHoliday(ds, tid){
     <div class="mh"><div class="mht">✏️ 編輯常態課程</div><button class="mcls" onclick="closeOv('ov-edit-rec')">✕</button></div>
     <div class="mb">
       <div id="er-info-text" style="font-size:.75rem;color:var(--muted);margin-bottom:12px;padding:7px 10px;background:var(--bg2);border-radius:var(--r)"></div>
+      <div class="fg" id="er-tid-row" style="display:none">
+        <label>授課老師（管理員可更換）</label>
+        <select id="er-tid" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;font-size:.84rem;background:#f9fbfe"></select>
+      </div>
       <div class="gr g3">
         <div class="fg"><label>班部</label><input type="text" id="er-dept" /></div>
         <div class="fg"><label>分校</label><input type="text" id="er-branch" /></div>
@@ -4356,7 +4518,8 @@ function isHoliday(ds, tid){
         </div>
       </div>
       <div class="gr g3">
-        <div class="fg"><label>班部</label><input type="text" id="es-dept" /></div>
+        <div class="fg"><label>授課老師</label><select id="es-tid" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;font-size:.84rem"></select></div>
+    <div class="fg"><label>班部</label><input type="text" id="es-dept" /></div>
         <div class="fg"><label>分校</label><input type="text" id="es-branch" /></div>
         <div class="fg"><label>年段</label><input type="text" id="es-grade" /></div>
       </div>
