@@ -231,8 +231,12 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
         <select id="rp-sel" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;font-size:.84rem;background:#f9fbfe"></select>
       </div>
       <div class="fg">
+        <label>個人驗證碼 <span style="font-size:.68rem;color:var(--muted)">（由管理員設定，管理員輸入 admin 密碼）</span></label>
+        <input type="text" id="rp-secret" placeholder="請輸入你的個人驗證碼" autocomplete="off">
+      </div>
+      <div class="fg">
         <label>新密碼</label>
-        <input type="password" id="rp-pw1" placeholder="請輸入新密碼" oninput="checkPwMatch()">
+        <input type="password" id="rp-pw1" placeholder="請輸入新密碼（至少4字元）" oninput="checkPwMatch()">
       </div>
       <div class="fg">
         <label>確認密碼</label>
@@ -257,15 +261,11 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-av" id="sb-av">?</div>
     <div><div class="sb-uname" id="sb-un">—</div><div class="sb-urole" id="sb-ur">—</div></div>
   </div>
-  <div class="sb-sec">
-    <div class="sb-lbl">行事曆</div>
-    <div class="sb-item on" data-p="cal" onclick="goPage(this)"><span class="sb-ico">📅</span>行事曆總覽</div>
-  </div>
   <div class="sb-sec" id="nav-materials-a">
     <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
     <div class="sb-item" data-p="materials" onclick="goPage(this)" style="position:relative">
       <span class="sb-ico">📦</span>講義庫存系統
-      <span id="badge-mat" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+      <span id="badge-mat-a" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
     </div>
   </div>
   <div class="sb-sec" id="presence-section" style="border-top:1px solid rgba(255,255,255,.07);padding:4px 0">
@@ -281,7 +281,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="leave" onclick="goPage(this)"><span class="sb-ico">📝</span>提出申請</div>
     <div class="sb-item" data-p="sub" onclick="goPage(this)" style="position:relative">
       <span class="sb-ico">🔄</span>代課接課
-      <span id="badge-sub" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+      <span id="badge-sub-t" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
     </div>
     <div class="sb-lbl" style="margin-top:6px">其他</div>
     <div class="sb-item" data-p="myfinance" onclick="goPage(this)"><span class="sb-ico">💰</span>我的收入</div>
@@ -293,7 +293,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-lbl" style="margin-top:6px">📚 講義庫存</div>
     <div class="sb-item" data-p="materials" onclick="goPage(this)" style="position:relative">
       <span class="sb-ico">📦</span>講義庫存系統
-      <span id="badge-mat" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+      <span id="badge-mat-t" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
     </div>
   </div>
   <div class="sb-sec" id="nav-a" style="display:none">
@@ -305,7 +305,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-item" data-p="leave" onclick="goPage(this)"><span class="sb-ico">📝</span>提出申請</div>
     <div class="sb-item" data-p="sub" onclick="goPage(this)" style="position:relative">
       <span class="sb-ico">🔄</span>代課接課
-      <span id="badge-sub" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
+      <span id="badge-sub-a" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f59e0b;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 5px"></span>
     </div>
     <div class="sb-item" data-p="review" onclick="goPage(this)" style="position:relative">
       <span class="sb-ico">✅</span>審核申請
@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v89</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v93</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -688,52 +688,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       </div>
     </div>
 
-    <div id="pg-journal" class="pg" style="display:none">
-      <div class="notice">從行事曆點選課程後可開啟教師日誌；以下為所有日誌記錄。</div>
-      <div class="card">
-        <div class="ch">
-          <div class="ct"><div class="dot"></div>教師日誌</div>
-          <input type="month" id="jn-filter-month" onchange="renderJournals()" style="font-size:.77rem;padding:3px 8px;width:auto" />
-        </div>
-        <div class="cb" style="padding:0"><div id="journal-list" style="padding:12px"></div></div>
-      </div>
-    </div>
-
-    <div id="pg-holidays" class="pg" style="display:none">
-      <div class="notice">設定後，所有常態課程在這些日期將自動從行事曆移除，不需逐一申請。</div>
-      <div class="card">
-        <div class="ch"><div class="ct"><div class="dot"></div>新增假日／停課</div></div>
-        <div class="cb">
-          <div class="gr g2">
-            <div class="fg"><label>類型</label>
-              <select id="hol-type">
-                <option value="day">單日假日</option>
-                <option value="week">整週停課</option>
-                <option value="range">自訂區間</option>
-              </select>
-            </div>
-            <div class="fg"><label>說明</label><input type="text" id="hol-name" placeholder="例：段考週、國慶日" /></div>
-          </div>
-          <div class="gr g2" id="hol-date-row">
-            <div class="fg"><label>日期（起）</label><input type="date" id="hol-from" /></div>
-            <div class="fg" id="hol-to-col"><label>日期（迄，整週可不填）</label><input type="date" id="hol-to" /></div>
-          </div>
-          <div class="fg" style="margin-bottom:0">
-            <label>適用師資</label>
-            <select id="hol-scope">
-              <option value="all">全體師資</option>
-            </select>
-          </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:12px">
-            <button class="btn bn" onclick="saveHoliday()">新增假日</button>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="ch"><div class="ct"><div class="dot"></div>已設定的假日</div></div>
-        <div class="cb" style="padding:0"><div id="holidays-list" style="padding:12px"></div></div>
-      </div>
-    </div>
 
     <div id="pg-myfinance" class="pg" style="display:none">
       <div class="card">
@@ -944,6 +898,25 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
     <div id="pg-cpw" class="pg" style="display:none">
       <div class="card" style="max-width:340px"><div class="ch"><div class="ct"><div class="dot"></div>修改密碼</div></div><div class="cb"><div class="gr" style="margin-bottom:0"><div class="fg"><label>目前密碼</label><input type="password" id="cpw-old"></div><div class="fg"><label>新密碼</label><input type="password" id="cpw-new"></div><div class="fg"><label>確認新密碼</label><input type="password" id="cpw-new2"></div></div><div id="cpw-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:4px"></div></div><div class="mf"><button class="btn bn" onclick="doChangePw()">儲存</button></div></div>
+
+    <!-- 設定個人驗證碼 -->
+    <div class="card" style="max-width:340px;margin-top:12px">
+      <div class="ch"><div class="ct"><div class="dot"></div>設定忘記密碼驗證碼</div></div>
+      <div class="cb">
+        <div class="fg">
+          <label>個人驗證碼 <span style="font-size:.68rem;color:var(--muted)">（忘記密碼時需輸入此碼）</span></label>
+          <input type="text" id="my-secret" placeholder="設定一組只有你知道的碼" autocomplete="off">
+        </div>
+        <div class="fg">
+          <label>確認驗證碼</label>
+          <input type="text" id="my-secret2" placeholder="再輸入一次">
+        </div>
+        <div id="secret-err" style="color:var(--red);font-size:.72rem;min-height:14px;margin-top:2px"></div>
+        <div style="margin-top:8px">
+          <button class="btn bn" onclick="saveMySecret()">儲存驗證碼</button>
+        </div>
+      </div>
+    </div>
     </div>
 
   </div>
@@ -1086,7 +1059,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 <div id="toast"></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfUS1BUjjjzpZD1v1eipXApy_BzdkAPVk",
@@ -1364,14 +1337,18 @@ function renderTeachers(){
   if(!S.teachers.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">👤</div>尚無師資</div></td></tr>';return;}
   tb.innerHTML=S.teachers.map(t=>{
     const p=t.perm||{type:'all'};const pt={all:'全部',select:'部分師資',self:'僅自己'}[p.type]||'全部';
-    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button><button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
+    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>${t.secret?'<span style="font-size:.65rem;color:var(--grn);margin-left:2px">🔑</span>':'<span style="font-size:.65rem;color:#f59e0b;margin-left:2px" title="未設定驗證碼">⚠️</span>'}<button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
   }).join('');
 }
 function openAddTeacher(){document.getElementById('nt-name').value='';document.getElementById('nt-note').value='';openOv('ov-teacher');}
 async function doAddTeacher(){const name=document.getElementById('nt-name').value.trim();if(!name){toast('請填寫姓名');return;}await fsAdd('teachers',{name,pw:'',note:document.getElementById('nt-note').value.trim(),perm:{type:'all',ids:[],showHistory:false}});closeOv('ov-teacher');toast('師資已新增',true);}
 let editTeacherId=null;
 function openEditTeacher(id){editTeacherId=id;const t=S.teachers.find(x=>x.id===id);if(!t)return;document.getElementById('et-name').value=t.name||'';document.getElementById('et-note').value=t.note||'';openOv('ov-edit-teacher');}
-async function saveEditTeacher(){if(!editTeacherId)return;const name=document.getElementById('et-name').value.trim();const note=document.getElementById('et-note').value.trim();if(!name){toast('請填寫姓名');return;}await fsUpdate('teachers',editTeacherId,{name,note});closeOv('ov-edit-teacher');toast('✅ 師資資料已更新',true);}
+async function saveEditTeacher(){if(!editTeacherId)return;const name=document.getElementById('et-name').value.trim();const note=document.getElementById('et-note').value.trim();if(!name){toast('請填寫姓名');return;}const secretVal=document.getElementById('et-secret')?.value.trim();
+  const updateData={name,note};
+  if(secretVal) updateData.secret=secretVal; // 有填才更新驗證碼
+  await fsUpdate('teachers',editTeacherId,updateData);
+  closeOv('ov-edit-teacher');toast('✅ 師資資料已更新',true);}
 let rpTid=null;
 function openRp(tid){rpTid=tid;document.getElementById('rp-t').textContent='重設密碼 — '+tn(tid);document.getElementById('rp-pw').value='';openOv('ov-rp');}
 async function doResetPw(){const pw=document.getElementById('rp-pw').value.trim();if(!pw){toast('請輸入新密碼');return;}await fsUpdate('teachers',rpTid,{pw});closeOv('ov-rp');toast('密碼已重設',true);}
@@ -3742,10 +3719,12 @@ function openResetPw(){
   }
   const pw1 = document.getElementById('rp-pw1');
   const pw2 = document.getElementById('rp-pw2');
+  const sec = document.getElementById('rp-secret');
   const msg = document.getElementById('rp-match-msg');
   const btn = document.getElementById('rp-submit-btn');
   if(pw1) pw1.value = '';
   if(pw2) pw2.value = '';
+  if(sec) sec.value = '';
   if(msg) msg.textContent = '';
   if(btn){ btn.disabled=true; btn.style.opacity='0.5'; }
   const modal = document.getElementById('ov-reset-pw');
@@ -3788,16 +3767,36 @@ function checkPwMatch(){
 
 async function doForgotPw(){
   const tid = document.getElementById('rp-sel')?.value;
+  const secret = (document.getElementById('rp-secret')?.value||'').trim();
   const pw1 = document.getElementById('rp-pw1')?.value || '';
   const pw2 = document.getElementById('rp-pw2')?.value || '';
   if(!tid){ toast('請選擇姓名'); return; }
+  if(!secret){ toast('請輸入個人驗證碼'); return; }
   if(!pw1 || pw1.length < 4){ toast('密碼至少需要 4 個字元'); return; }
   if(pw1 !== pw2){ toast('兩次密碼不一致，請重新輸入'); return; }
+
   if(tid === '__admin__'){
-    // 管理員密碼存在 Firebase config collection
-    await setDoc(doc(db,'config','admin'), { pw: pw1 });
-    ADMIN_PW = pw1; // 立即生效
+    // 管理員驗證：從 Firebase 讀取管理員驗證碼
+    const adminSnap = await getDoc(doc(db,'config','admin'));
+    const adminSecret = adminSnap.exists() ? adminSnap.data().secret : null;
+    if(!adminSecret){
+      toast('❌ 管理員尚未設定驗證碼，請至 Firebase console 手動設定 config/admin.secret');return;
+    }
+    if(adminSecret.trim() !== secret){
+      toast('❌ 驗證碼錯誤，請確認後再試');return;
+    }
+    await setDoc(doc(db,'config','admin'), { pw: pw1, secret: adminSecret });
+    ADMIN_PW = pw1;
   } else {
+    // 老師驗證：比對 Firebase 裡的 secret 欄位
+    const teacher = S.teachers.find(t=>t.id===tid);
+    if(!teacher){ toast('找不到此師資'); return; }
+    if(!teacher.secret){
+      toast('❌ 此帳號尚未設定驗證碼，請聯絡管理員'); return;
+    }
+    if(teacher.secret.trim() !== secret){
+      toast('❌ 驗證碼錯誤，請確認後再試'); return;
+    }
     await fsUpdate('teachers', tid, { pw: pw1 });
   }
   closeResetPw();
@@ -3818,11 +3817,10 @@ function updateBadges(){
   (S.requests||[]).filter(r=>r.status==='approved'&&r.type==='leave').forEach(r=>{
     r.sessions.forEach((s,i)=>{ if(!r.takers[i]) pendingSub++; });
   });
-  const badgeSub = document.getElementById('badge-sub');
-  if(badgeSub){
-    badgeSub.textContent = pendingSub > 99 ? '99+' : pendingSub;
-    badgeSub.style.display = pendingSub > 0 ? 'inline-block' : 'none';
-  }
+  ['badge-sub-t','badge-sub-a'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=pendingSub>99?'99+':pendingSub;el.style.display=pendingSub>0?'inline-block':'none';}
+  });
 
   // ── 以下僅管理員 ──
   if(!isAdm()) return;
@@ -3837,11 +3835,10 @@ function updateBadges(){
 
   // 講義庫存：待審核的 matRequests
   const pendingMat = (S.matRequests||[]).filter(r=>r.status==='pending').length;
-  const badgeMat = document.getElementById('badge-mat');
-  if(badgeMat){
-    badgeMat.textContent = pendingMat > 99 ? '99+' : pendingMat;
-    badgeMat.style.display = pendingMat > 0 ? 'inline-block' : 'none';
-  }
+  ['badge-mat-a','badge-mat-t'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=pendingMat>99?'99+':pendingMat;el.style.display=pendingMat>0?'inline-block':'none';}
+  });
 }
 window.updateBadges = updateBadges;
 
@@ -4339,6 +4336,29 @@ function openTransferFromEditSpot(){
 window.openTransferFromEdit=openTransferFromEdit;
 window.openTransferFromEditSpot=openTransferFromEditSpot;
 
+
+
+// ── 設定個人驗證碼 ──
+async function saveMySecret(){
+  const s1=(document.getElementById('my-secret')?.value||'').trim();
+  const s2=(document.getElementById('my-secret2')?.value||'').trim();
+  const errEl=document.getElementById('secret-err');
+  if(!s1){if(errEl)errEl.textContent='請填寫驗證碼';return;}
+  if(s1!==s2){if(errEl)errEl.textContent='兩次驗證碼不一致';return;}
+  if(errEl)errEl.textContent='';
+  if(isAdm()){
+    // 管理員存到 config/admin
+    const snap=await getDoc(doc(db,'config','admin'));
+    const existing=snap.exists()?snap.data():{};
+    await setDoc(doc(db,'config','admin'),{...existing,secret:s1});
+  } else {
+    await fsUpdate('teachers',cur.id,{secret:s1});
+  }
+  document.getElementById('my-secret').value='';
+  document.getElementById('my-secret2').value='';
+  toast('✅ 驗證碼已設定',true);
+}
+window.saveMySecret=saveMySecret;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
