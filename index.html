@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v93</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v95</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -964,6 +964,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <select id="take-sel"></select>
   </div>
   <div class="notice" id="take-self-notice" style="margin-top:11px;display:none">您將以「<strong id="take-self-name"></strong>」身份接課</div>
+  <div class="fg" style="margin-top:10px">
+    <label>代課鐘點費（元/堂）<span style="font-size:.68rem;color:var(--muted)"> — 僅自己可見，不同老師各自填寫</span></label>
+    <input type="number" id="take-fee" placeholder="0" min="0" value="0" style="width:100%">
+  </div>
   <div class="ckr" onclick="document.getElementById('take-chk').click()"><input type="checkbox" id="take-chk"><label for="take-chk">已閱畢代課注意事項，並同意遵守相關規定</label></div>
 </div>
 <div class="mf"><button class="btn bg" onclick="closeOv('ov-take')">取消</button><button class="btn bok" onclick="doTake()">確認接課</button></div>
@@ -1791,6 +1795,7 @@ let tId=null,tSi=null;
 function openTake(rid,si){
   const r=S.requests.find(x=>x.id===rid),s=r.sessions[si];tId=rid;tSi=si;
   document.getElementById('take-chk').checked=false;
+  const takeFeeEl=document.getElementById('take-fee');if(takeFeeEl)takeFeeEl.value=0;
   const selRow=document.getElementById('take-name-row');
   if(selRow){if(isAdm()){selRow.style.display='flex';fillSel();document.getElementById('take-sel').value='';}else{selRow.style.display='none';}}
   document.getElementById('take-info').innerHTML=`<div class="ir"><span class="il">班級</span><span class="iv"><strong>${s.dept} ${s.branch} ${s.grade}</strong></span></div><div class="ir"><span class="il">時間</span><span class="iv">${s.date} ${s.start}–${s.end}</span></div><div class="ir"><span class="il">原師資</span><span class="iv" style="color:var(--blue)">${tn(r.tid)}</span></div>${!isAdm()?`<div class="notice" style="margin-top:8px;background:var(--gbg);border-left-color:var(--grn);color:var(--grn)">您將以「<strong>${cur.name}</strong>」的身份接課</div>`:''}`;
@@ -1802,9 +1807,31 @@ async function doTake(){
   else tid=cur.id;
   if(!document.getElementById('take-chk').checked){toast('請勾選已閱畢代課注意事項');return;}
   const r=S.requests.find(x=>x.id===tId);if(!r)return;
-  await fsUpdate('requests',tId,{takers:{...r.takers,[tSi]:{tid}}});
-  await logHistory('request',tn(tid)+' 接受代課：'+r.sessions[tSi].dept+r.sessions[tSi].branch,tid);
-  closeOv('ov-take');toast('✅ '+tn(tid)+' 已接課！',true);
+  const s=r.sessions[tSi];
+
+  // 代課鐘點費（只有代課老師自己的，原授課師費用不帶過去）
+  const takeFee=parseFloat(document.getElementById('take-fee')?.value)||0;
+
+  // 建立點狀課給代課老師（ds/lec 清空，保護原授課師費用隱私）
+  await fsAdd('spots',{
+    tid,
+    date:s.date,
+    start:s.start,
+    end:s.end,
+    dept:s.dept,
+    branch:s.branch,
+    grade:s.grade,
+    fee:takeFee,  // 代課老師自己填的鐘點費
+    ds:0,
+    lec:0,
+    note:'代課（原授課：'+tn(r.tid)+'）',
+    isSub:true,   // 標記為代課
+    reqId:tId     // 關聯申請 ID
+  });
+
+  await fsUpdate('requests',tId,{takers:{...r.takers,[tSi]:{tid,fee:takeFee}}});
+  await logHistory('request',tn(tid)+' 接受代課：'+s.dept+s.branch+' '+s.date,tid);
+  closeOv('ov-take');toast('✅ '+tn(tid)+' 已接課，課程已加入行事曆！',true);
 }
 
 // REVIEW
@@ -3914,6 +3941,7 @@ function renderMyFinance(){
       <th style="text-align:right">派師費</th>
       <th style="text-align:right">講義費</th>
       <th style="text-align:right">小計</th>
+      <th style="text-align:right;color:#10b981">實拿</th>
       <th style="width:50px"></th>
     </tr></thead>
     <tbody>`;
@@ -3927,10 +3955,11 @@ function renderMyFinance(){
       <td style="text-align:right;color:var(--blue)">$${r.ds.toLocaleString()}</td>
       <td style="text-align:right">$${r.lec.toLocaleString()}</td>
       <td style="text-align:right;font-weight:600">$${total.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:700;color:#10b981">$${r.fee.toLocaleString()}</td>
       <td><button class="btn bg bxs" onclick="toggleMyFinDetail(${i})" id="myfin-btn-${i}">展開</button></td>
     </tr>
     <tr id="myfin-detail-${i}" style="display:none">
-      <td colspan="7" style="padding:0;background:var(--bg2)">
+      <td colspan="8" style="padding:0;background:var(--bg2)">
         <table style="width:100%;border-collapse:collapse;font-size:.76rem">
           <thead><tr style="background:var(--bg2)">
             <th style="padding:6px 12px;text-align:left">日期</th>
@@ -3964,6 +3993,7 @@ function renderMyFinance(){
     <td style="text-align:right;color:var(--blue)">$${totalDs.toLocaleString()}</td>
     <td style="text-align:right">$${totalLec.toLocaleString()}</td>
     <td style="text-align:right">$${(totalFee+totalDs+totalLec).toLocaleString()}</td>
+    <td style="text-align:right;color:#10b981">$${totalFee.toLocaleString()}</td>
     <td></td>
   </tr></tbody></table>`;
 
