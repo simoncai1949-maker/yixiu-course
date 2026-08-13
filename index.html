@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/07/20　v95</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/13　v97</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -609,11 +609,13 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
           <div class="fg" style="margin-bottom:10px"><label>備注（選填）</label><input type="text" id="lv-note" placeholder="說明"></div>
           <hr>
           <div class="fg" style="margin-bottom:10px">
-            <label>從常態課程快速新增堂次</label>
-            <div style="display:flex;gap:6px">
-              <select id="lv-rec-sel" onchange="populateLeaveRecurring()" style="flex:1;font-size:.79rem"></select>
-              <button class="btn bg bsm" onclick="addSessFromRec()">加入</button>
+            <label>選月份快速帶入課程</label>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input type="month" id="lv-month-sel" onchange="loadLeaveMonthCourses()"
+                style="font-size:.79rem;padding:4px 8px;border:1px solid var(--bdr);border-radius:6px;flex:1">
+              <button class="btn bg bsm" onclick="loadLeaveMonthCourses()">載入</button>
             </div>
+            <div id="lv-month-courses" style="max-height:200px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;display:none"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:.78rem;font-weight:500;color:var(--navy)">堂次</div><button class="btn bg bsm" onclick="addSess()">＋ 手動新增</button></div>
           <div id="sess-wrap"></div>
@@ -1060,6 +1062,32 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   </div>
 </div>
 
+<!-- 換老師 Modal -->
+<div class="ov" id="ov-change-teacher">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><div class="mht">👤 更換授課老師</div><button class="mcls" onclick="closeOv('ov-change-teacher')">✕</button></div>
+    <div class="mb">
+      <div id="ct-info" style="background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.8rem;color:var(--navy)"></div>
+      <div class="fg">
+        <label>更換為</label>
+        <select id="ct-new-tid" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;font-size:.84rem"></select>
+      </div>
+      <div class="fg" id="ct-scope-row">
+        <label>更換範圍</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <label class="ckr"><input type="radio" name="ct-scope" value="single" checked> 只換這一堂（<span id="ct-date-label"></span>）</label>
+          <label class="ckr"><input type="radio" name="ct-scope" value="future"> 從這堂起，往後全部換</label>
+          <label class="ckr"><input type="radio" name="ct-scope" value="all"> 整個系列全換</label>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button class="btn bg" onclick="closeOv('ov-change-teacher')">取消</button>
+        <button class="btn bn" onclick="doChangeTeacher()">確認更換</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -1234,6 +1262,8 @@ function enterApp(){
   if(histNav&&!isAdm()){const t=S.teachers.find(x=>x.id===cur.id);histNav.style.display=(t?.perm?.showHistory)?'flex':'none';}
   document.getElementById('lg-pw').value='';
   fillSel(); goPage(document.querySelector('.sb-item[data-p="cal"]'));
+  // 每分鐘確認跨日
+  setInterval(()=>{const t=new Date().toISOString().slice(0,10);if(calDay<t)calDay=t;},60000);
 }
 function doLogout(){cur=null;clearSession();document.getElementById('app').classList.remove('show');document.getElementById('login-screen').classList.add('show');document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.pg').forEach(x=>x.style.display='none');document.getElementById('lg-pw').value='';popLoginSel();document.querySelectorAll('.mob-nav').forEach(x=>x.classList.remove('mob-active'));}
 async function doFirstPw(){const pw=document.getElementById('fp-pw').value,pw2=document.getElementById('fp-pw2').value,err=document.getElementById('fp-err');err.textContent='';if(!pw){err.textContent='請輸入密碼';return;}if(pw!==pw2){err.textContent='兩次輸入不符';return;}await fsUpdate('teachers',cur.id,{pw});closeOv('ov-firstpw');toast('✅ 密碼設定完成',true);}
@@ -1293,7 +1323,9 @@ function goPage(el){
   if(p==='newcourse'){renderRecList();renderSpotList();populateCopyFrom();}
   if(p==='schedule'){renderSchGrid();renderSingleList();renderAllCourses();}
   if(p==='teachers')renderTeachers();
-  if(p==='leave'){setupLeave();setTimeout(populateLeaveRecurring,500);}
+  if(p==='leave'){
+    const lvMonth=document.getElementById('lv-month-sel');
+    if(lvMonth&&!lvMonth.value){const n=new Date();lvMonth.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}setupLeave();setTimeout(populateLeaveRecurring,500);}
   if(p==='sub')renderSub();
   if(p==='review')renderReview();
   if(p==='finance'){
@@ -2288,8 +2320,22 @@ function showDay(ds){
     if(ev.type==='reg'||ev.type==='rec'||ev.type==='spot'){
       badge=`<span class="badge ${ev.type==='rec'?'brec':'bnv'}">${ev.type==='rec'?'常態課':ev.type==='spot'?'點狀課':'管理課'}</span>`;
       rows=`<div class="ir"><span class="il">授課師資</span><span class="iv" style="color:var(--blue)">${tn(ev.tid)}</span></div>`+feeRow;
-      if(isAdm()&&eid){btn=`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap"><button class="btn bg bsm" onclick="adminOpenEdit('${etypeShort}','${eid}',window._cds,'${ev.start}')">✏️ 編輯</button><button class="btn bdel bsm" onclick="adminConfirmDelete('${etypeShort}','${eid}')">🗑 刪除</button></div>`;}
-      else if(!isAdm()&&cur?.id===ev.tid&&eid){btn=`<button class="btn bg bsm" style="margin-top:8px" onclick="openJournal('${etypeShort}','${eid}',window._cds,'${ev.start}')">📝 教師日誌</button>`;}
+      if(isAdm()&&eid){
+        const isRec=ev.type==='rec';
+        btn=`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn bg bsm" onclick="adminOpenEdit('${etypeShort}','${eid}',window._cds,'${ev.start}')">✏️ 編輯</button>
+          <button class="btn bs bsm" onclick="adminChangeTeacher('${etypeShort}','${eid}',window._cds)">👤 換老師</button>
+          <button class="btn bp bsm" onclick="adminQuickLeave('${etypeShort}','${eid}',window._cds,'${ev.start}','${ev.end}',ev)">📋 安排代課</button>
+          <button class="btn bdel bsm" onclick="adminConfirmDelete('${etypeShort}','${eid}')">🗑 刪除</button>
+        </div>`;
+      } else if(!isAdm()&&cur?.id===ev.tid&&eid){
+        const isRec=ev.type==='rec';
+        btn=`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn bg bsm" onclick="openJournal('${etypeShort}','${eid}',window._cds,'${ev.start}')">📝 日誌</button>
+          <button class="btn bp bsm" onclick="teacherQuickLeave('${etypeShort}','${eid}',window._cds,'${ev.start}','${ev.end}',ev)">📋 申請代課/停課</button>
+          <button class="btn bs bsm" onclick="openTransfer('${ev.type==='rec'?'rec':'spot'}','${eid}',window._cds,'${ev.start}')">🔄 轉讓</button>
+        </div>`;
+      }
     }else if(ev.type==='pend'){
       badge='<span class="badge bp">審核中</span>';
       rows=`<div class="ir"><span class="il">原師資</span><span class="iv">${tn(ev.tid)}</span></div><div class="ir"><span class="il">類型</span><span class="iv">${{leave:'請假代課',cancel:'停課',adjust:'課程調動'}[ev.req?.type]||'—'}</span></div>`;
@@ -4389,6 +4435,181 @@ async function saveMySecret(){
   toast('✅ 驗證碼已設定',true);
 }
 window.saveMySecret=saveMySecret;
+
+
+// ── 請假申請：月份課程列表 ──
+function loadLeaveMonthCourses(){
+  const monthSel = document.getElementById('lv-month-sel');
+  const listEl = document.getElementById('lv-month-courses');
+  if(!monthSel||!listEl) return;
+  const month = monthSel.value;
+  if(!month){ listEl.style.display='none'; return; }
+  const tid = isAdm()?(document.getElementById('lv-t')?.value||cur.id):cur.id;
+  if(!tid){ toast('請先選擇師資'); return; }
+
+  const [y,m] = month.split('-').map(Number);
+  const days = new Date(y,m,0).getDate();
+  const from = `${month}-01`, to = `${month}-${String(days).padStart(2,'0')}`;
+  const courses = getMonthCourses(tid, null, from, to);
+
+  if(!courses.length){
+    listEl.style.display='block';
+    listEl.innerHTML='<div class="empty" style="padding:12px;font-size:.78rem">本月無課程</div>';
+    return;
+  }
+
+  listEl.style.display='block';
+  listEl.innerHTML = courses.map((c,i)=>
+    `<div onclick="selectLeaveCourse(${i},'${tid}')" data-idx="${i}"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bdr);font-size:.8rem;display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--blight)'" onmouseout="this.style.background=''">
+      <span><strong>${c.date}</strong>　${c.dept}${c.branch} ${c.grade}</span>
+      <span style="color:var(--muted);font-size:.72rem">${c.start}–${c.end}</span>
+    </div>`
+  ).join('');
+  // Store for reference
+  window._leaveMonthCourses = courses;
+  window._leaveTid = tid;
+}
+
+function selectLeaveCourse(idx, tid){
+  const courses = window._leaveMonthCourses;
+  if(!courses||!courses[idx]) return;
+  const c = courses[idx];
+
+  // 覆蓋 sess-wrap 裡所有現有堂次，只保留這一堂
+  const wrap = document.getElementById('sess-wrap');
+  if(!wrap) return;
+
+  // 找現有 sessb blocks
+  const blocks = wrap.querySelectorAll('.sessb');
+
+  // 清除全部，只用第一個（或新建）
+  blocks.forEach((b,i) => {
+    if(i===0){
+      // 覆蓋第一筆
+      const dInp = b.querySelector('.sd'); if(dInp) dInp.value=c.date;
+      const sInp = b.querySelector('.ss'); if(sInp) sInp.value=c.start;
+      const eInp = b.querySelector('.se'); if(eInp) eInp.value=c.end;
+      const deptInp = b.querySelector('.sdept'); if(deptInp) deptInp.value=c.dept;
+      const brInp = b.querySelector('.sbranch'); if(brInp) brInp.value=c.branch;
+      const grInp = b.querySelector('.sgrade'); if(grInp) grInp.value=c.grade;
+    } else {
+      b.remove(); // 移除多餘的堂次
+    }
+  });
+
+  if(!blocks.length){
+    // 沒有現有 block，先新增一個
+    addSess();
+    setTimeout(()=>selectLeaveCourse(idx, tid), 50);
+    return;
+  }
+
+  // 收起列表
+  const listEl = document.getElementById('lv-month-courses');
+  if(listEl) listEl.style.display='none';
+  toast('✅ 已帶入 '+c.date+' '+c.dept+c.branch+' '+c.grade, true);
+}
+window.loadLeaveMonthCourses=loadLeaveMonthCourses;
+window.selectLeaveCourse=selectLeaveCourse;
+
+
+// ── 管理員換老師（從行事曆直接操作）──
+let _ctData = null;
+function adminChangeTeacher(src, id, date){
+  _ctData = {src, id, date};
+  const sel = document.getElementById('ct-new-tid');
+  if(sel) sel.innerHTML = S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  const infoEl = document.getElementById('ct-info');
+  const dateLabel = document.getElementById('ct-date-label');
+  const scopeRow = document.getElementById('ct-scope-row');
+  let name = '';
+  if(src==='rec'){
+    const r=S.recurring.find(x=>x.id===id);
+    if(r){name=r.dept+r.branch+' '+r.grade+' '+r.start; if(sel)sel.value=r.tid||'';}
+    if(scopeRow) scopeRow.style.display='block';
+  } else {
+    const s=S.spots.find(x=>x.id===id)||S.courses.find(x=>x.id===id);
+    if(s){name=s.dept+s.branch+' '+s.grade+' '+s.start; if(sel)sel.value=s.tid||'';}
+    if(scopeRow) scopeRow.style.display='none'; // 點狀/管理課只有單堂
+  }
+  if(infoEl) infoEl.innerHTML='📚 <strong>'+name+'</strong>　'+date;
+  if(dateLabel) dateLabel.textContent=date;
+  closeOv('ov-day');
+  openOv('ov-change-teacher');
+}
+
+async function doChangeTeacher(){
+  if(!_ctData){toast('資料遺失');return;}
+  const {src,id,date}=_ctData;
+  const newTid=document.getElementById('ct-new-tid')?.value;
+  const scope=document.querySelector('input[name="ct-scope"]:checked')?.value||'single';
+  if(!newTid){toast('請選擇老師');return;}
+
+  if(src==='rec'){
+    const r=S.recurring.find(x=>x.id===id);
+    if(!r){toast('找不到課程');return;}
+    if(scope==='all'){
+      await fsUpdate('recurring',id,{tid:newTid});
+    } else if(scope==='single'){
+      // 單堂：原課加停課 + 新建點狀課給新老師
+      await fsAdd('requests',{tid:r.tid,type:'cancel',status:'approved',
+        sessions:[{date,start:r.start,dept:r.dept,branch:r.branch,grade:r.grade}],
+        takers:[],at:new Date().toISOString()});
+      await fsAdd('spots',{tid:newTid,date,start:r.start,end:r.end,
+        dept:r.dept,branch:r.branch,grade:r.grade,fee:0,ds:0,lec:0});
+    } else { // future
+      const prev=new Date(date);prev.setDate(prev.getDate()-1);
+      await fsUpdate('recurring',id,{to:prev.toISOString().slice(0,10)});
+      await fsAdd('recurring',{tid:newTid,dept:r.dept,branch:r.branch,grade:r.grade,
+        wd:r.wd,start:r.start,end:r.end,from:date,to:r.to||'',
+        fee:0,ds:0,lec:0,freq:r.freq||'weekly'});
+    }
+  } else {
+    // 點狀/管理課直接換 tid
+    const col=src==='course'?'courses':'spots';
+    await fsUpdate(col,id,{tid:newTid});
+  }
+  closeOv('ov-change-teacher');
+  toast('✅ 已更換授課老師',true);
+}
+
+// ── 管理員從行事曆安排代課 ──
+function adminQuickLeave(src,id,date,start,end,ev){
+  closeOv('ov-day');
+  // 直接開 openTake modal - 填入對應的 request
+  const existReq = S.requests.find(r=>r.status==='approved'&&r.type==='leave'&&
+    r.sessions.some(s=>s.date===date&&s.start===start));
+  if(existReq){
+    const si=existReq.sessions.findIndex(s=>s.date===date&&s.start===start);
+    openTake(existReq.id,si);
+  } else {
+    // 建立一個新的 leave request 然後直接 approve
+    const tid=ev.tid;
+    const dept=ev.label?.split(' ')[0]||'';
+    toast('請到「提出申請」頁面建立請假申請');
+  }
+}
+
+// ── 師資從行事曆申請代課/停課 ──
+function teacherQuickLeave(src,id,date,start,end,ev){
+  closeOv('ov-day');
+  // 跳到提出申請頁，並預填資料
+  goPage(document.querySelector('.sb-item[data-p="leave"]'));
+  // 設定月份並載入
+  const monthSel=document.getElementById('lv-month-sel');
+  if(monthSel){
+    monthSel.value=date.slice(0,7);
+    loadLeaveMonthCourses();
+  }
+  toast('請從下方列表選擇要請假的課程',true);
+}
+
+window.adminChangeTeacher=adminChangeTeacher;
+window.doChangeTeacher=doChangeTeacher;
+window.adminQuickLeave=adminQuickLeave;
+window.teacherQuickLeave=teacherQuickLeave;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
