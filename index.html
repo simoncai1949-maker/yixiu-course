@@ -324,7 +324,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/13　v97</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/19　v99</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -1088,6 +1088,52 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   </div>
 </div>
 
+<!-- 教師日誌填寫 -->
+<div class="ov" id="ov-journal">
+  <div class="modal" style="max-width:560px">
+    <div class="mh">
+      <div>
+        <div class="mht">📓 教師日誌</div>
+        <div id="jn-date" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button class="mcls" onclick="closeOv('ov-journal')">✕</button>
+    </div>
+    <div class="mb">
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--muted);white-space:nowrap">帶入歷史：</span>
+        <select id="jn-history-sel" onchange="loadJournalHistory()" style="font-size:.78rem;padding:4px 8px;border:1px solid var(--bdr);border-radius:6px;flex:1">
+          <option value="">— 選擇過往同班記錄覆寫 —</option>
+        </select>
+      </div>
+      <div class="gr g2">
+        <div class="fg"><label>上課人數</label><input type="number" id="jn-count" placeholder="人數" min="0"></div>
+        <div class="fg"><label>教學進度</label><input type="text" id="jn-progress" placeholder="例：第三章第二節"></div>
+      </div>
+      <div class="fg"><label>授課狀況</label><textarea id="jn-status" rows="3" placeholder="課堂狀況、重點項目…" style="resize:vertical;width:100%"></textarea></div>
+      <div class="fg"><label>學生概況分享</label><textarea id="jn-students" rows="3" placeholder="學生學習狀況、特別事項…" style="resize:vertical;width:100%"></textarea></div>
+      <div class="fg"><label>其他備注（選填）</label><textarea id="jn-notes" rows="2" placeholder="其他補充…" style="resize:vertical;width:100%"></textarea></div>
+    </div>
+    <div class="mf"><button class="btn bg" onclick="closeOv('ov-journal')">取消</button><button class="btn bn" onclick="saveJournal()">儲存日誌</button></div>
+  </div>
+</div>
+
+<!-- 日誌留言 -->
+<div class="ov" id="ov-journal-view">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><div class="mht">📖 <span id="jv-title"></span></div><button class="mcls" onclick="closeOv('ov-journal-view')">✕</button></div>
+    <div class="mb">
+      <div id="jv-content" style="margin-bottom:16px"></div>
+      <hr style="margin-bottom:12px">
+      <div style="font-size:.8rem;font-weight:600;color:var(--navy);margin-bottom:8px">💬 留言 / 回覆</div>
+      <div id="jv-comments" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="jv-comment-inp" placeholder="寫留言…" style="flex:1;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:.82rem">
+        <button class="btn bn bsm" onclick="submitJournalComment()">送出</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -1174,7 +1220,7 @@ function refreshPage() {
   else if(p==='sub') renderSub();
   else if(p==='review') renderReview();
   else if(p==='history') renderHistory();
-  else if(p==='journals') renderJournals();
+  else if(p==='journals'){renderJournals();renderMyJournalCourses();}
   else if(p==='leave') populateLeaveRecurring();
   fillSel(); popLoginSel(); renderPresence(); if(document.getElementById('pg-materials')?.style.display!=='none')renderMaterials(); updateBadges(); if(_dmTarget&&document.getElementById('ov-dm')?.classList.contains('open'))renderDmMessages();
 }
@@ -1280,7 +1326,7 @@ async function forgotPw(){
 async function doChangePw(){const old=document.getElementById('cpw-old').value,nw=document.getElementById('cpw-new').value,nw2=document.getElementById('cpw-new2').value,err=document.getElementById('cpw-err');err.textContent='';const t=S.teachers.find(x=>x.id===cur.id);if(!t){err.textContent='找不到帳號';return;}if(t.pw!==old){err.textContent='目前密碼錯誤';return;}if(!nw){err.textContent='請輸入新密碼';return;}if(nw!==nw2){err.textContent='兩次新密碼不符';return;}await fsUpdate('teachers',cur.id,{pw:nw});['cpw-old','cpw-new','cpw-new2'].forEach(id=>document.getElementById(id).value='');toast('密碼已更新',true);}
 
 // NAV
-const TITLES={materials:'講義庫存',myfinance:'我的收入',exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
+const TITLES={materials:'講義庫存',myfinance:'我的收入','journals-browse':'全體教師日誌',journals:'教師日誌',exportsch:'匯出課表',finance:'財務總覽',cal:'行事曆總覽',mycourses:'我的課表',newcourse:'新增課程',schedule:'課表管理',teachers:'師資管理',leave:'提出申請',sub:'代課接課',review:'審核申請',cpw:'修改密碼',history:'歷史紀錄',journals:'教師日誌',holidays:'假日設定'};
 function updatePresence(page){
   if(!cur) return;
   const pageNames={cal:'行事曆',mycourses:'我的課表',newcourse:'新增課程',
@@ -1341,6 +1387,9 @@ function goPage(el){
   if(p==='materials'){
     renderMaterials();
   }
+  if(p==='journals-browse'){
+    renderJournalsBrowse();
+  }
   if(p==='myfinance'){
     renderMyFinance();
   }
@@ -1351,7 +1400,7 @@ function goPage(el){
     if(sel){sel.innerHTML='<option value="all">全體師資</option>'+S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
     renderHolidays();
   }
-  if(p==='journals'){document.getElementById('jn-filter-m').value=new Date().toISOString().slice(0,7);const fts=document.getElementById('jn-filter-t');if(isAdm()&&fts){fts.style.display='block';const opts=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');fts.innerHTML='<option value="">全部師資</option>'+opts;}renderJournals();}
+  if(p==='journals'){renderMyJournalCourses();document.getElementById('jn-filter-m').value=new Date().toISOString().slice(0,7);const fts=document.getElementById('jn-filter-t');if(isAdm()&&fts){fts.style.display='block';const opts=S.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');fts.innerHTML='<option value="">全部師資</option>'+opts;}renderJournals();}
 }
 
 function fillSel(){
@@ -2523,19 +2572,49 @@ function saveQuickAdd(){ saveNcQuickAdd(); }
 
 // JOURNAL
 let journalKey=null;
-function openJournal(type,id,date,start){
+function openJournal(type,id,date,start,courseLabel){
   journalKey=`${type}_${id}_${date}_${start}`;
+  window._journalMeta={type,id,date,start,courseLabel};
   const existing=S.journals?.find(j=>j.key===journalKey);
-  document.getElementById('jn-date').textContent=date+' '+start;
-  document.getElementById('jn-students').value=existing?.students||'';document.getElementById('jn-trial').value=existing?.trial||'';
-  document.getElementById('jn-progress').value=existing?.progress||'';document.getElementById('jn-exam').value=existing?.exam||'';
-  document.getElementById('jn-hw').value=existing?.hw||'';document.getElementById('jn-notes').value=existing?.notes||'';
+  const dateEl=document.getElementById('jn-date');
+  if(dateEl) dateEl.textContent=(courseLabel||'')+' '+date+' '+start;
+  // 填入四個欄位
+  const set=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val||'';};
+  set('jn-count', existing?.count||'');
+  set('jn-progress', existing?.progress||'');
+  set('jn-status', existing?.status||'');
+  set('jn-students', existing?.students||'');
+  set('jn-notes', existing?.notes||'');
+  // 帶入歷史：找同班歷史記錄
+  const sel=document.getElementById('jn-history-sel');
+  if(sel){
+    const sameClass=S.journals?.filter(j=>j.tid===cur.id&&j.key!==journalKey&&
+      j.dept===(courseLabel||'').split(' ')[0])
+      .sort((a,b)=>b.at.localeCompare(a.at)).slice(0,10)||[];
+    sel.innerHTML='<option value="">— 選擇過往同班記錄覆寫 —</option>'+
+      sameClass.map(j=>`<option value="${j.id}">${j.at.slice(0,10)} ${j.progress||''}</option>`).join('');
+  }
   openOv('ov-journal');
 }
 async function saveJournal(){
+  const g=(id)=>document.getElementById(id)?.value||'';
+  const meta=window._journalMeta||{};
   const docId='jn_'+journalKey.replace(/[^a-z0-9]/gi,'_');
-  await fsAdd('journals',{id:docId,key:journalKey,tid:cur.id,students:document.getElementById('jn-students').value,trial:document.getElementById('jn-trial').value,progress:document.getElementById('jn-progress').value,exam:document.getElementById('jn-exam').value,hw:document.getElementById('jn-hw').value,notes:document.getElementById('jn-notes').value,at:new Date().toISOString()});
+  await fsAdd('journals',{
+    id:docId, key:journalKey, tid:cur.id,
+    dept:meta.courseLabel?.split(' ')[0]||'',
+    course:meta.courseLabel||'',
+    date:meta.date||'',
+    count:g('jn-count'),
+    progress:g('jn-progress'),
+    status:g('jn-status'),
+    students:g('jn-students'),
+    notes:g('jn-notes'),
+    comments:[],
+    at:new Date().toISOString()
+  });
   closeOv('ov-journal');toast('✅ 教師日誌已儲存',true);
+  renderJournals();
 }
 function renderJournals(){
   const el=document.getElementById('journals-list');if(!el)return;
@@ -2546,9 +2625,25 @@ function renderJournals(){
   if(mv)logs=logs.filter(j=>j.at&&j.at.startsWith(mv));
   logs.sort((a,b)=>b.at.localeCompare(a.at));
   if(!logs.length){el.innerHTML='<div class="empty"><div class="ei">📝</div>尚無日誌</div>';return;}
-  el.innerHTML=logs.map(j=>`<div class="ri"><div class="rmeta"><div class="rwho">${tn(j.tid)} <span class="badge bblue">${j.key?.split('_').slice(-2).join(' ')||''}</span></div><div class="rdet" style="line-height:2">${j.students?'人數：'+j.students+'人　':''}${j.trial?'試聽：'+j.trial+'人　':''}<br>${j.progress?'進度：'+j.progress+'<br>':''}${j.exam?'考試：'+j.exam+'<br>':''}${j.hw?'作業：'+j.hw+'<br>':''}${j.notes?'備注：'+j.notes+'<br>':''}${new Date(j.at).toLocaleString('zh-TW')}</div></div></div>`).join('');
+  el.innerHTML=logs.map(j=>{
+    const t=S.teachers.find(x=>x.id===j.tid);
+    const isMine=j.tid===cur.id;
+    return`<div class="ri">
+      <div class="rmeta">
+        <div>
+          <div class="rwho">${t?.name||tn(j.tid)} <span style="color:var(--muted);font-weight:400;font-size:.72rem">${j.date||j.at?.slice(0,10)} ${j.course||''}</span></div>
+          <div style="font-size:.78rem;margin-top:4px">${j.count?'👥 '+j.count+'人　':''}${j.progress?'📌 '+j.progress:''}</div>
+          ${j.status?'<div style="font-size:.78rem;color:var(--muted);margin-top:3px">授課狀況：'+j.status+'</div>':''}
+          ${j.students?'<div style="font-size:.78rem;color:var(--muted);margin-top:3px">學生概況：'+j.students+'</div>':''}
+        </div>
+        <div class="racts">
+          ${isMine?`<button class="btn bg bxs" onclick="openJournal('${j.key?.split('_')[0]||'rec'}','${j.key?.split('_')[1]||''}','${j.date||''}','${j.key?.split('_')[3]||''}','${j.course||''}')">✏️ 編輯</button>`:''}
+          <button class="btn bs bxs" onclick="openJournalView('${j.id}')">💬(${(j.comments||[]).length})</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
-
 // HISTORY
 async function logHistory(type,desc,actorTid){await fsAdd('history',{type,desc,actor:actorTid||ADMIN_ID,at:new Date().toISOString()});}
 function renderHistory(){
@@ -4595,21 +4690,173 @@ function adminQuickLeave(src,id,date,start,end,ev){
 // ── 師資從行事曆申請代課/停課 ──
 function teacherQuickLeave(src,id,date,start,end,ev){
   closeOv('ov-day');
-  // 跳到提出申請頁，並預填資料
-  goPage(document.querySelector('.sb-item[data-p="leave"]'));
-  // 設定月份並載入
-  const monthSel=document.getElementById('lv-month-sel');
-  if(monthSel){
-    monthSel.value=date.slice(0,7);
-    loadLeaveMonthCourses();
+  // 找到 leave 側欄按鈕並點擊
+  const leaveBtn = document.querySelector('#nav-t .sb-item[data-p="leave"]') ||
+                   document.querySelector('.sb-item[data-p="leave"]');
+  if(leaveBtn){
+    goPage(leaveBtn);
+  } else {
+    // fallback：直接切換頁面
+    document.querySelectorAll('.pg').forEach(p=>p.style.display='none');
+    const pg = document.getElementById('pg-leave');
+    if(pg) pg.style.display='block';
+    setupLeave && setupLeave();
   }
-  toast('請從下方列表選擇要請假的課程',true);
+  // 設定月份並載入課程
+  setTimeout(()=>{
+    const monthSel=document.getElementById('lv-month-sel');
+    if(monthSel){
+      monthSel.value=date.slice(0,7);
+      loadLeaveMonthCourses();
+      // 找到對應課程自動選取
+      setTimeout(()=>{
+        const courses = window._leaveMonthCourses||[];
+        const idx = courses.findIndex(c=>c.date===date&&c.start===start);
+        if(idx>=0) selectLeaveCourse(idx, cur.id);
+        else toast('請從下方列表選擇要請假的課程',true);
+      }, 300);
+    }
+  }, 100);
 }
 
 window.adminChangeTeacher=adminChangeTeacher;
 window.doChangeTeacher=doChangeTeacher;
 window.adminQuickLeave=adminQuickLeave;
 window.teacherQuickLeave=teacherQuickLeave;
+
+
+// ── 教師日誌：帶入歷史 ──
+function loadJournalHistory(){
+  const sel=document.getElementById('jn-history-sel');
+  if(!sel||!sel.value) return;
+  const hist=S.journals?.find(j=>j.id===sel.value);
+  if(!hist) return;
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  set('jn-count', hist.count);
+  set('jn-progress', hist.progress);
+  set('jn-status', hist.status);
+  set('jn-students', hist.students);
+  set('jn-notes', hist.notes);
+  toast('✅ 已帶入歷史記錄，可直接編輯',true);
+}
+window.loadJournalHistory=loadJournalHistory;
+
+// ── 教師日誌：我的課程列表（點選寫日誌）──
+function renderMyJournalCourses(){
+  const el=document.getElementById('jn-my-courses'); if(!el) return;
+  const mv=document.getElementById('jn-filter-m')?.value||new Date().toISOString().slice(0,7);
+  const tid=cur.id;
+  const [y,m]=mv.split('-').map(Number);
+  const days=new Date(y,m,0).getDate();
+  const from=`${mv}-01`, to=`${mv}-${String(days).padStart(2,'0')}`;
+  const courses=getMonthCourses(tid,null,from,to);
+  if(!courses.length){
+    el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📖</div>本月無課程</div>';
+    return;
+  }
+  el.innerHTML='<table class="tbl" style="margin:0"><thead><tr><th>日期</th><th>課程</th><th>時間</th><th style="width:80px"></th></tr></thead><tbody>'+
+    courses.map(c=>{
+      const key=`${c.src}_${c.id||''}_${c.date}_${c.start}`;
+      const hasJournal=S.journals?.some(j=>j.key===key);
+      const label=c.dept+c.branch+' '+c.grade;
+      return`<tr>
+        <td>${c.date}</td>
+        <td style="font-weight:500">${label}</td>
+        <td>${c.start}–${c.end}</td>
+        <td><button class="btn ${hasJournal?'bok':'bg'} bxs" onclick="openJournal('${c.src}','${c.id||''}','${c.date}','${c.start}','${label}')">
+          ${hasJournal?'✅ 查看':'📝 填寫'}
+        </button></td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+}
+window.renderMyJournalCourses=renderMyJournalCourses;
+
+// ── 教師日誌：瀏覽頁面 ──
+function renderJournalsBrowse(){
+  const el=document.getElementById('journals-browse-list'); if(!el) return;
+  const tid=document.getElementById('jb-filter-t')?.value||'';
+  const mv=document.getElementById('jb-filter-m')?.value||'';
+  // 初始化老師選單
+  const tsel=document.getElementById('jb-filter-t');
+  if(tsel&&tsel.options.length<=1){
+    S.teachers.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;tsel.appendChild(o);});
+  }
+  let logs=[...(S.journals||[])];
+  if(tid) logs=logs.filter(j=>j.tid===tid);
+  if(mv) logs=logs.filter(j=>j.at?.startsWith(mv));
+  logs.sort((a,b)=>b.at.localeCompare(a.at));
+  if(!logs.length){el.innerHTML='<div class="empty" style="padding:20px"><div class="ei">📖</div>尚無日誌記錄</div>';return;}
+  el.innerHTML='<div style="padding:8px">'+logs.map(j=>{
+    const t=S.teachers.find(x=>x.id===j.tid);
+    const isMine=j.tid===cur.id;
+    return`<div class="ri" style="margin-bottom:8px">
+      <div class="rmeta">
+        <div>
+          <div class="rwho">${t?.name||'—'} <span style="color:var(--muted);font-weight:400;font-size:.72rem">${j.date||j.at?.slice(0,10)} ${j.course||''}</span></div>
+          <div style="font-size:.78rem;margin-top:6px;color:var(--txt)">
+            ${j.count?`<span style="margin-right:12px">👥 ${j.count}人</span>`:''}
+            ${j.progress?`<span style="margin-right:12px">📌 ${j.progress}</span>`:''}
+          </div>
+          ${j.status?`<div style="font-size:.78rem;color:var(--muted);margin-top:4px;white-space:pre-line">授課狀況：${j.status}</div>`:''}
+          ${j.students?`<div style="font-size:.78rem;color:var(--muted);margin-top:3px;white-space:pre-line">學生概況：${j.students}</div>`:''}
+        </div>
+        <div class="racts">
+          ${isMine?`<button class="btn bg bxs" onclick="openJournal('${j.key?.split('_')[0]||'rec'}','','${j.date||''}','',\'${j.course||''}\')">✏️ 編輯</button>`:''}
+          <button class="btn bs bxs" onclick="openJournalView('${j.id}')">💬 留言(${(j.comments||[]).length})</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+window.renderJournalsBrowse=renderJournalsBrowse;
+
+// ── 教師日誌：查看留言 ──
+let _jvId=null;
+function openJournalView(jid){
+  _jvId=jid;
+  const j=S.journals?.find(x=>x.id===jid); if(!j) return;
+  const t=S.teachers.find(x=>x.id===j.tid);
+  document.getElementById('jv-title').textContent=(t?.name||'—')+' — '+(j.date||j.at?.slice(0,10))+' '+(j.course||'');
+  const content_el=document.getElementById('jv-content');
+  if(content_el) content_el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">上課人數</div><div style="font-weight:600">${j.count||'—'} 人</div></div>
+      <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">教學進度</div><div style="font-weight:600">${j.progress||'—'}</div></div>
+    </div>
+    ${j.status?`<div style="margin-bottom:8px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">授課狀況</div><div style="font-size:.82rem;white-space:pre-line">${j.status}</div></div>`:''}
+    ${j.students?`<div style="margin-bottom:8px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">學生概況</div><div style="font-size:.82rem;white-space:pre-line">${j.students}</div></div>`:''}
+    ${j.notes?`<div><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">備注</div><div style="font-size:.82rem">${j.notes}</div></div>`:''}
+  `;
+  const commentsEl=document.getElementById('jv-comments');
+  if(commentsEl){
+    const comments=j.comments||[];
+    commentsEl.innerHTML=comments.length?comments.map(c=>{
+      const ct=S.teachers.find(x=>x.id===c.tid);
+      return`<div style="padding:6px 10px;background:var(--bg2);border-radius:8px;margin-bottom:6px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:2px">${ct?.name||'管理員'} · ${c.at?.slice(0,16).replace('T',' ')}</div>
+        <div style="font-size:.8rem">${c.text}</div>
+      </div>`;
+    }).join(''):'<div style="font-size:.78rem;color:var(--muted);text-align:center;padding:8px">尚無留言</div>';
+  }
+  const inp=document.getElementById('jv-comment-inp');
+  if(inp) inp.value='';
+  openOv('ov-journal-view');
+}
+
+async function submitJournalComment(){
+  const inp=document.getElementById('jv-comment-inp');
+  const text=(inp?.value||'').trim();
+  if(!text){toast('請輸入留言內容');return;}
+  const j=S.journals?.find(x=>x.id===_jvId);
+  if(!j){toast('找不到日誌');return;}
+  const comments=[...(j.comments||[]),{tid:cur.id,text,at:new Date().toISOString()}];
+  await fsUpdate('journals',_jvId,{comments});
+  if(inp) inp.value='';
+  toast('✅ 留言已送出',true);
+  openJournalView(_jvId);
+}
+window.openJournalView=openJournalView;
+window.submitJournalComment=submitJournalComment;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
