@@ -183,6 +183,46 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
   .main{padding-bottom:60px;}
 }
 @media(max-width:420px){.lg-box{width:92vw;padding:24px 20px;}#lg-sel,#lg-pw{font-size:1rem;padding:8px 10px;}}
+
+/* ── 手機版 ── */
+@media(max-width:640px){
+  .sb{
+    position:fixed;left:-240px;top:0;bottom:0;z-index:950;
+    transition:left .25s cubic-bezier(.4,0,.2,1);
+    width:240px;overflow-y:auto;
+  }
+  .sb.mob-open{ left:0; }
+  .body{ flex-direction:column; }
+  .main{ width:100%;min-height:0; }
+  .content{ padding-bottom:70px; } /* 底部 nav 高度 */
+  .mob-nav{ display:flex; }
+  .mob-nav-item{ position:relative; }
+  /* 卡片 padding 減小 */
+  .card .cb{ padding:10px; }
+  .ch{ padding:10px 12px; flex-wrap:wrap; gap:6px; }
+  /* 表格水平捲動 */
+  .tbl{ font-size:.72rem; }
+  .tbl th,.tbl td{ padding:5px 6px; }
+  /* 行事曆 */
+  .cal-bar{ flex-wrap:wrap;gap:6px;padding:8px; }
+  .leg{ display:none; } /* 圖例手機隱藏 */
+  /* 總覽表格 */
+  .ov-wrap{ overflow-x:auto; }
+  /* Grid 調整 */
+  .gr.g3{ grid-template-columns:1fr 1fr; }
+  .gr.g2{ grid-template-columns:1fr; }
+  /* Modal 全螢幕 */
+  .modal{ max-width:100%!important;width:100%;margin:0;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0; }
+  .ov{ align-items:flex-end; }
+  /* 週/總覽行事曆 */
+  .wgrid,.ov-grid{ font-size:.68rem; }
+  /* topbar */
+  .topbar{ padding:0 12px; }
+  .tb-title{ font-size:.88rem; }
+}
+@media(max-width:420px){
+  .gr.g3{ grid-template-columns:1fr; }
+}
 </style>
 </head>
 <body>
@@ -324,23 +364,24 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/19　v99</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/19　v101</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
   <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
   <div class="mob-nav-item" data-p="mycourses" onclick="mobNav(this)"><div class="mni">📖</div>我的課</div>
-  <div class="mob-nav-item" data-p="newcourse" onclick="mobNav(this)"><div class="mni">➕</div>新增</div>
   <div class="mob-nav-item" data-p="leave" onclick="mobNav(this)"><div class="mni">📝</div>申請</div>
-  <div class="mob-nav-item" data-p="sub" onclick="mobNav(this)"><div class="mni">🔄</div>代課</div>
+  <div class="mob-nav-item" data-p="sub" onclick="mobNav(this)"><div class="mni">🔄</div>代課<span id="badge-sub-t" style="display:none;position:absolute;top:4px;right:4px;background:#f59e0b;color:#fff;font-size:.55rem;font-weight:700;min-width:15px;height:15px;border-radius:8px;text-align:center;line-height:15px;padding:0 3px"></span></div>
+  <div class="mob-nav-item" onclick="toggleMobSidebar()"><div class="mni">☰</div>更多</div>
 </div>
 <div class="mob-nav" id="mob-nav-adm" style="display:none">
   <div class="mob-nav-item" data-p="cal" onclick="mobNav(this)"><div class="mni">📅</div>行事曆</div>
+  <div class="mob-nav-item" data-p="review" onclick="mobNav(this)"><div class="mni">✅</div>審核<span id="badge-review-m" style="display:none;position:absolute;top:4px;right:4px;background:#ef4444;color:#fff;font-size:.55rem;font-weight:700;min-width:15px;height:15px;border-radius:8px;text-align:center;line-height:15px;padding:0 3px"></span></div>
   <div class="mob-nav-item" data-p="schedule" onclick="mobNav(this)"><div class="mni">📋</div>課表</div>
-  <div class="mob-nav-item" data-p="review" onclick="mobNav(this)"><div class="mni">✅</div>審核</div>
   <div class="mob-nav-item" data-p="teachers" onclick="mobNav(this)"><div class="mni">👤</div>師資</div>
-  <div class="mob-nav-item" data-p="history" onclick="mobNav(this)"><div class="mni">📜</div>紀錄</div>
+  <div class="mob-nav-item" onclick="toggleMobSidebar()"><div class="mni">☰</div>更多</div>
 </div>
+<div id="mob-sb-overlay" onclick="toggleMobSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900"></div>
 <div class="main">
   <div class="topbar">
     <div class="tb-title" id="pg-title">行事曆總覽</div>
@@ -1105,10 +1146,12 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
           <option value="">— 選擇過往同班記錄覆寫 —</option>
         </select>
       </div>
-      <div class="gr g2">
-        <div class="fg"><label>上課人數</label><input type="number" id="jn-count" placeholder="人數" min="0"></div>
+      <div class="gr g3">
+        <div class="fg"><label>上課總人數</label><input type="number" id="jn-count" placeholder="人數" min="0"></div>
+        <div class="fg"><label>本日試聽人數</label><input type="number" id="jn-trial" placeholder="0" min="0"></div>
         <div class="fg"><label>教學進度</label><input type="text" id="jn-progress" placeholder="例：第三章第二節"></div>
       </div>
+      <div class="fg"><label>今日試聽關懷狀況</label><textarea id="jn-trial-care" rows="2" placeholder="試聽學生狀況、後續追蹤…" style="resize:vertical;width:100%"></textarea></div>
       <div class="fg"><label>授課狀況</label><textarea id="jn-status" rows="3" placeholder="課堂狀況、重點項目…" style="resize:vertical;width:100%"></textarea></div>
       <div class="fg"><label>學生概況分享</label><textarea id="jn-students" rows="3" placeholder="學生學習狀況、特別事項…" style="resize:vertical;width:100%"></textarea></div>
       <div class="fg"><label>其他備注（選填）</label><textarea id="jn-notes" rows="2" placeholder="其他補充…" style="resize:vertical;width:100%"></textarea></div>
@@ -2581,6 +2624,8 @@ function openJournal(type,id,date,start,courseLabel){
   // 填入四個欄位
   const set=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val||'';};
   set('jn-count', existing?.count||'');
+  set('jn-trial', existing?.trial||'');
+  set('jn-trial-care', existing?.trialCare||'');
   set('jn-progress', existing?.progress||'');
   set('jn-status', existing?.status||'');
   set('jn-students', existing?.students||'');
@@ -2606,6 +2651,8 @@ async function saveJournal(){
     course:meta.courseLabel||'',
     date:meta.date||'',
     count:g('jn-count'),
+    trial:g('jn-trial'),
+    trialCare:g('jn-trial-care'),
     progress:g('jn-progress'),
     status:g('jn-status'),
     students:g('jn-students'),
@@ -2632,7 +2679,7 @@ function renderJournals(){
       <div class="rmeta">
         <div>
           <div class="rwho">${t?.name||tn(j.tid)} <span style="color:var(--muted);font-weight:400;font-size:.72rem">${j.date||j.at?.slice(0,10)} ${j.course||''}</span></div>
-          <div style="font-size:.78rem;margin-top:4px">${j.count?'👥 '+j.count+'人　':''}${j.progress?'📌 '+j.progress:''}</div>
+          <div style="font-size:.78rem;margin-top:4px">${j.count?'👥 '+j.count+'人　':''}${j.trial&&j.trial!='0'?'🆕 試聽'+j.trial+'人　':''}${j.progress?'📌 '+j.progress:''}</div>
           ${j.status?'<div style="font-size:.78rem;color:var(--muted);margin-top:3px">授課狀況：'+j.status+'</div>':''}
           ${j.students?'<div style="font-size:.78rem;color:var(--muted);margin-top:3px">學生概況：'+j.students+'</div>':''}
         </div>
@@ -3985,7 +4032,7 @@ function updateBadges(){
   (S.requests||[]).filter(r=>r.status==='approved'&&r.type==='leave').forEach(r=>{
     r.sessions.forEach((s,i)=>{ if(!r.takers[i]) pendingSub++; });
   });
-  ['badge-sub-t','badge-sub-a'].forEach(id=>{
+  ['badge-sub-t','badge-sub-a','badge-sub-tm'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){el.textContent=pendingSub>99?'99+':pendingSub;el.style.display=pendingSub>0?'inline-block':'none';}
   });
@@ -3995,11 +4042,10 @@ function updateBadges(){
 
   // 審核申請：待審核的 requests
   const pendingReview = (S.requests||[]).filter(r=>r.status==='pending').length;
-  const badgeReview = document.getElementById('badge-review');
-  if(badgeReview){
-    badgeReview.textContent = pendingReview > 99 ? '99+' : pendingReview;
-    badgeReview.style.display = pendingReview > 0 ? 'inline-block' : 'none';
-  }
+  ['badge-review','badge-review-m'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=pendingReview>99?'99+':pendingReview;el.style.display=pendingReview>0?'inline-block':'none';}
+  });
 
   // 講義庫存：待審核的 matRequests
   const pendingMat = (S.matRequests||[]).filter(r=>r.status==='pending').length;
@@ -4733,6 +4779,8 @@ function loadJournalHistory(){
   if(!hist) return;
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('jn-count', hist.count);
+  set('jn-trial', hist.trial);
+  set('jn-trial-care', hist.trialCare);
   set('jn-progress', hist.progress);
   set('jn-status', hist.status);
   set('jn-students', hist.students);
@@ -4819,10 +4867,12 @@ function openJournalView(jid){
   document.getElementById('jv-title').textContent=(t?.name||'—')+' — '+(j.date||j.at?.slice(0,10))+' '+(j.course||'');
   const content_el=document.getElementById('jv-content');
   if(content_el) content_el.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">上課人數</div><div style="font-weight:600">${j.count||'—'} 人</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">上課總人數</div><div style="font-weight:600">${j.count||'—'} 人</div></div>
+      <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">試聽人數</div><div style="font-weight:600">${j.trial&&j.trial!='0'?j.trial+' 人':'—'}</div></div>
       <div style="background:var(--bg2);border-radius:8px;padding:8px 12px"><div style="font-size:.68rem;color:var(--muted)">教學進度</div><div style="font-weight:600">${j.progress||'—'}</div></div>
     </div>
+    ${j.trialCare?'<div style="margin-bottom:8px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">試聽關懷狀況</div><div style="font-size:.82rem;white-space:pre-line">'+j.trialCare+'</div></div>':''}
     ${j.status?`<div style="margin-bottom:8px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">授課狀況</div><div style="font-size:.82rem;white-space:pre-line">${j.status}</div></div>`:''}
     ${j.students?`<div style="margin-bottom:8px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">學生概況</div><div style="font-size:.82rem;white-space:pre-line">${j.students}</div></div>`:''}
     ${j.notes?`<div><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">備注</div><div style="font-size:.82rem">${j.notes}</div></div>`:''}
@@ -4857,6 +4907,33 @@ async function submitJournalComment(){
 }
 window.openJournalView=openJournalView;
 window.submitJournalComment=submitJournalComment;
+
+
+// ── 手機側欄開關 ──
+function toggleMobSidebar(){
+  const sb=document.querySelector('.sb');
+  const overlay=document.getElementById('mob-sb-overlay');
+  if(!sb) return;
+  const isOpen=sb.classList.contains('mob-open');
+  if(isOpen){
+    sb.classList.remove('mob-open');
+    if(overlay)overlay.style.display='none';
+  } else {
+    sb.classList.add('mob-open');
+    if(overlay)overlay.style.display='block';
+  }
+}
+// 側欄項目點擊後自動關閉
+document.addEventListener('click', function(e){
+  const item=e.target.closest('.sb-item');
+  if(item&&window.innerWidth<=640){
+    const sb=document.querySelector('.sb');
+    const overlay=document.getElementById('mob-sb-overlay');
+    if(sb)sb.classList.remove('mob-open');
+    if(overlay)overlay.style.display='none';
+  }
+});
+window.toggleMobSidebar=toggleMobSidebar;
 
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
