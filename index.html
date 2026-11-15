@@ -119,9 +119,9 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
 /* ── MOBILE RESPONSIVE ── */
 @media(max-width:768px){
   /* Hide desktop sidebar */
-  .sb{display:none !important;}
+  /* .sb 由 640px media query 處理 */
   /* Show mobile bottom nav */
-  .mob-nav.mob-active{display:flex !important;}
+  .mob-nav{display:flex;}
   /* Full width content */
   .content{padding:8px;}
   .main{padding:0;}
@@ -364,7 +364,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/08/19　v101</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/11/15　v104</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -643,10 +643,14 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
       <div id="lv-apply-panel">
         <div class="notice">填寫請假／停課申請，送出後由易學國文審核。</div>
         <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>申請單</div></div><div class="cb">
-          <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t" onchange="populateLeaveRecurring()"></select></div><div class="fg"><label>申請類型</label><select id="lv-type">
+          <div class="gr g2"><div class="fg" id="lv-t-row"><label>師資</label><select id="lv-t" onchange="populateLeaveRecurring();updateFreeHint()"></select></div><div class="fg"><label>申請類型</label><select id="lv-type" onchange="updateFreeHint()">
             <option value="cancel">停課（此堂課取消，不需代課）</option>
             <option value="leave">請假（需要安排代課）</option>
           </select></div></div>
+          <div id="lv-free-row" style="display:none;margin-bottom:10px;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:9px;background:var(--bg2)">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem"><input type="checkbox" id="lv-free"> 使用免抽成額度</label>
+            <div id="lv-free-hint" style="font-size:.72rem;color:var(--muted);margin-top:3px"></div>
+          </div>
           <div class="fg" style="margin-bottom:10px"><label>備注（選填）</label><input type="text" id="lv-note" placeholder="說明"></div>
           <hr>
           <div class="fg" style="margin-bottom:10px">
@@ -1465,15 +1469,16 @@ function renderTeachers(){
   if(!S.teachers.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">👤</div>尚無師資</div></td></tr>';return;}
   tb.innerHTML=S.teachers.map(t=>{
     const p=t.perm||{type:'all'};const pt={all:'全部',select:'部分師資',self:'僅自己'}[p.type]||'全部';
-    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>${t.secret?'<span style="font-size:.65rem;color:var(--grn);margin-left:2px">🔑</span>':'<span style="font-size:.65rem;color:#f59e0b;margin-left:2px" title="未設定驗證碼">⚠️</span>'}<button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
+    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span> <span class="badge" style="background:var(--bg2);color:var(--navy)" title="本學期免抽成請假：已用／額度">免抽 ${usedFree(t.id,semKey(todayStr()))}/${quotaOf(t)}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>${t.secret?'<span style="font-size:.65rem;color:var(--grn);margin-left:2px">🔑</span>':'<span style="font-size:.65rem;color:#f59e0b;margin-left:2px" title="未設定驗證碼">⚠️</span>'}<button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
   }).join('');
 }
 function openAddTeacher(){document.getElementById('nt-name').value='';document.getElementById('nt-note').value='';openOv('ov-teacher');}
 async function doAddTeacher(){const name=document.getElementById('nt-name').value.trim();if(!name){toast('請填寫姓名');return;}await fsAdd('teachers',{name,pw:'',note:document.getElementById('nt-note').value.trim(),perm:{type:'all',ids:[],showHistory:false}});closeOv('ov-teacher');toast('師資已新增',true);}
 let editTeacherId=null;
-function openEditTeacher(id){editTeacherId=id;const t=S.teachers.find(x=>x.id===id);if(!t)return;document.getElementById('et-name').value=t.name||'';document.getElementById('et-note').value=t.note||'';openOv('ov-edit-teacher');}
+function openEditTeacher(id){editTeacherId=id;const t=S.teachers.find(x=>x.id===id);if(!t)return;document.getElementById('et-name').value=t.name||'';document.getElementById('et-note').value=t.note||'';const _sec=document.getElementById('et-secret');if(_sec)_sec.value='';const _q=document.getElementById('et-quota');if(_q)_q.value=quotaOf(t);const _qi=document.getElementById('et-quota-info');if(_qi){const sk=semKey(todayStr());_qi.textContent=semLabel(sk)+'已使用 '+usedFree(t.id,sk)+' 次';}openOv('ov-edit-teacher');}
 async function saveEditTeacher(){if(!editTeacherId)return;const name=document.getElementById('et-name').value.trim();const note=document.getElementById('et-note').value.trim();if(!name){toast('請填寫姓名');return;}const secretVal=document.getElementById('et-secret')?.value.trim();
   const updateData={name,note};
+  const _qv=parseInt(document.getElementById('et-quota')?.value);if(!isNaN(_qv)&&_qv>=0)updateData.freeQuota=_qv;
   if(secretVal) updateData.secret=secretVal; // 有填才更新驗證碼
   await fsUpdate('teachers',editTeacherId,updateData);
   closeOv('ov-edit-teacher');toast('✅ 師資資料已更新',true);}
@@ -1812,7 +1817,7 @@ function renderMyCal(el,tid){
 }
 
 // LEAVE
-function setupLeave(){fillSel();if(!isAdm()){const lvt=document.getElementById('lv-t');if(lvt)lvt.value=cur.id;}if(!document.querySelectorAll('.sessb').length)addSess();populateLeaveRecurring();}
+function setupLeave(){setTimeout(updateFreeHint,0);fillSel();if(!isAdm()){const lvt=document.getElementById('lv-t');if(lvt)lvt.value=cur.id;}if(!document.querySelectorAll('.sessb').length)addSess();populateLeaveRecurring();}
 function populateLeaveRecurring(){
   const sel=document.getElementById('lv-rec-sel');if(!sel)return;
   const tid=isAdm()?(document.getElementById('lv-t')?.value||''):(cur?cur.id:'');
@@ -1885,7 +1890,7 @@ function addSessFromRec(){
   toast('✅ 已帶入「'+r.dept+r.branch+r.grade+'」，請填寫日期',true);
 }
 let sc=0;
-function clearLeave(){document.getElementById('lv-note').value='';document.getElementById('sess-wrap').innerHTML='';sc=0;addSess();if(!isAdm()){const lvt=document.getElementById('lv-t');if(lvt)lvt.value=cur.id;}}
+function clearLeave(){const _lf=document.getElementById('lv-free');if(_lf)_lf.checked=false;document.getElementById('lv-note').value='';document.getElementById('sess-wrap').innerHTML='';sc=0;addSess();if(!isAdm()){const lvt=document.getElementById('lv-t');if(lvt)lvt.value=cur.id;}}
 async function submitLeave(){
   const tid=isAdm()?document.getElementById('lv-t').value:cur.id;if(!tid){toast('請選擇師資');return;}
   const blocks=document.querySelectorAll('.sessb');if(!blocks.length){toast('請新增至少一個堂次');return;}
@@ -1900,7 +1905,15 @@ async function submitLeave(){
     if(!date){toast('請填寫堂次日期');return;}
     if(!dept||!branch||!grade){toast('請填寫班部、分校、年段');return;}
     sessions.push({date,start,end,dept,branch,grade});}
-  await fsAdd('requests',{tid,type:document.getElementById('lv-type').value,note:document.getElementById('lv-note').value.trim(),sessions,status:'pending',takers:{},at:new Date().toISOString()});
+  const _type=document.getElementById('lv-type').value;
+  const useFree=_type==='leave'&&!!document.getElementById('lv-free')?.checked;
+  if(useFree){
+    const bySem={};sessions.forEach(s=>{const k=semKey(s.date);bySem[k]=(bySem[k]||0)+1;});
+    const t=S.teachers.find(x=>x.id===tid);
+    for(const k in bySem){const left=quotaOf(t)-usedFree(tid,k,true);
+      if(bySem[k]>left){toast(semLabel(k)+'免抽成額度只剩 '+Math.max(left,0)+' 次，這次要用 '+bySem[k]+' 次');return;}}
+  }
+  await fsAdd('requests',{tid,type:_type,useFree,note:document.getElementById('lv-note').value.trim(),sessions,status:'pending',takers:{},at:new Date().toISOString()});
   toast('✅ 申請已送出',true);clearLeave();
 }
 
@@ -1910,7 +1923,7 @@ function renderSub(){
   S.requests.filter(r=>r.status==='approved'&&r.type==='leave').forEach(r=>{r.sessions.forEach((s,si)=>{if(!r.takers[si])avail.push({r,si,s});});});
   if(!avail.length){el.innerHTML='<div class="empty"><div class="ei">✅</div>目前沒有待接課</div>';return;}
   el.innerHTML=avail.map(({r,si,s})=>{
-    const adminBtns=isAdm()?`<button class="btn bg bsm" onclick="openEditEvent('ok','${r.id}',${si})">✏️ 指派</button><button class="btn bdel bsm" onclick="deleteRequest('${r.id}')">🗑 刪除</button>`:'';
+    const adminBtns=isAdm()?`<button class="btn bs bsm" onclick="openTake('${r.id}',${si})">👤 指派代課老師</button><button class="btn bdel bsm" onclick="deleteRequest('${r.id}')">🗑 刪除</button>`:'';
     const teacherBtn=!isAdm()?`<button class="btn bs bsm" onclick="openTake('${r.id}',${si})">我要接課</button>`:'';
     return`<div class="ri"><div class="rmeta"><div class="rwho"><span class="badge ba">需代課</span>${s.dept} ${s.branch} ${s.grade}</div><div class="rdet">${s.date} ${s.start}–${s.end}<br>原師資：<strong>${tn(r.tid)}</strong>${r.note?' ｜ '+r.note:''}</div></div><div class="racts">${teacherBtn}${adminBtns}</div></div>`;
   }).join('');
@@ -1965,7 +1978,7 @@ function renderReview(){
   const mk=(list,acts)=>list.length?list.map(r=>{
     const sl=r.sessions.map((s,i)=>{const tk=r.takers[i];return`・${s.date} ${s.start}–${s.end}　${s.dept} ${s.branch} ${s.grade}${tk?` <span style="color:var(--grn)">✓ ${tn(tk.tid)}</span>`:''}`}).join('<br>');
     const adminBtns=!acts&&isAdm()?`<div class="racts" style="flex-direction:column;gap:4px">${r.type==='leave'?r.sessions.map((s,i)=>!r.takers[i]?`<button class="btn bs bxs" onclick="openTake('${r.id}',${i})">指派代課</button>`:`<button class="btn bg bxs" onclick="openEditEvent('take','${r.id}',${i})">✏️ 編輯代課</button>`).join(''):''}<button class="btn bdel bxs" onclick="deleteRequest('${r.id}')">刪除</button></div>`:'';
-    return`<div class="ri"><div class="rmeta"><div class="rwho">${tn(r.tid)}<span class="badge ${bmap[r.status]}">${btxt[r.status]}</span><span style="font-size:.68rem;color:var(--muted)">${tmap[r.type]||r.type}</span></div><div class="rdet" style="margin:3px 0">${sl}</div>${r.note?`<div class="rdet">備注：${r.note}</div>`:''}<div class="rdet" style="margin-top:2px">${new Date(r.at).toLocaleString('zh-TW')}</div></div>${acts?`<div class="racts"><button class="btn bok bsm" onclick="approve('${r.id}')">同意</button><button class="btn bdel bsm" onclick="reject('${r.id}')">退回</button></div>`:adminBtns}</div>`;
+    return`<div class="ri"><div class="rmeta"><div class="rwho">${tn(r.tid)}<span class="badge ${bmap[r.status]}">${btxt[r.status]}</span><span style="font-size:.68rem;color:var(--muted)">${tmap[r.type]||r.type}</span>${r.type==='leave'?(r.useFree?'<span class="badge" style="background:rgba(16,185,129,.12);color:#065f46">免抽成</span>':'<span class="badge" style="background:rgba(245,158,11,.12);color:#92400e">需抽成</span>'):''}${r.type==='leave'&&!acts&&isAdm()&&r.status==='approved'?`<button class="btn bg bxs" style="margin-left:4px" onclick="toggleReqFree('${r.id}')">切換</button>`:''}</div><div class="rdet" style="margin:3px 0">${sl}</div>${r.note?`<div class="rdet">備注：${r.note}</div>`:''}<div class="rdet" style="margin-top:2px">${new Date(r.at).toLocaleString('zh-TW')}</div></div>${acts?`<div class="racts" style="flex-direction:column;align-items:flex-end;gap:5px">${r.type==='leave'?freeToggleHtml(r):''}<div style="display:flex;gap:5px"><button class="btn bok bsm" onclick="approve('${r.id}')">同意</button><button class="btn bdel bsm" onclick="reject('${r.id}')">退回</button></div></div>`:adminBtns}</div>`;
   }).join(''):'<div class="empty"><div class="ei">📭</div>無資料</div>';
   document.getElementById('rv-pend').innerHTML=mk(S.requests.filter(r=>r.status==='pending'),true);
   document.getElementById('rv-done').innerHTML=mk(S.requests.filter(r=>r.status!=='pending'),false);
@@ -2000,6 +2013,17 @@ async function approve(id){
     refreshPage();return;
   }
   // 一般申請
+  if(req.type==='leave'){
+    const cb=document.getElementById('rvfree-'+id);
+    const useFree=cb?cb.checked:!!req.useFree;
+    if(useFree){
+      const t=S.teachers.find(x=>x.id===req.tid);const bySem={};
+      req.sessions.forEach(s=>{const k=semKey(s.date);bySem[k]=(bySem[k]||0)+1;});
+      for(const k in bySem){const left=quotaOf(t)-usedFree(req.tid,k,false,id);
+        if(bySem[k]>left&&!confirm(tn(req.tid)+' '+semLabel(k)+'免抽成額度只剩 '+Math.max(left,0)+' 次，仍要使用嗎？'))return;}
+    }
+    await fsUpdate('requests',id,{status:'approved',useFree});
+  } else
   await fsUpdate('requests',id,{status:'approved'});
   if(req)await logHistory('request','核准申請：'+tn(req.tid)+' - '+(req.type==='cancel'?'停課':req.type==='leave'?'請假':'其他'),req.tid);
   toast('已核准',true);refreshPage();
@@ -2723,10 +2747,7 @@ function doExport(){
   let rows=[],sn=0;
   dates.forEach(ds=>{const wd=parseLocalDate(ds).getDay();S.courses.filter(c=>tids.includes(c.tid)&&c.date===ds&&matchBranch(c.dept,c.branch)).forEach(c=>{
       // 管理課程也要排除停課/請假
-      const cCancelled=S.requests.some(req=>
-        req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
-        req.sessions.some(s=>s.date===ds&&s.start===c.start));
-      if(!cCancelled){sn++;rows.push([sn,ds,tn(c.tid),c.dept+c.branch,c.grade,c.start+'–'+c.end,c.fee||0,c.ds||0,c.lec||0,'']);}
+      expPush(rows,ds,c);
     });S.recurring.filter(r=>{
       if(!tids.includes(r.tid)||r.wd!==wd) return false;
       if(r.from&&ds<r.from) return false;
@@ -2736,24 +2757,10 @@ function doExport(){
       if(freq==='monthly'&&r.from&&new Date(r.from).getDate()!==new Date(ds).getDate())return false;
       return true;
     }).filter(r=>matchBranch(r.dept,r.branch)).forEach(r=>{
-      // 1. 停課申請核准 → 不計
-      const cancelled=S.requests.some(req=>
-        req.status==='approved'&&req.type==='cancel'&&req.tid===r.tid&&
-        req.sessions.some(s=>s.date===ds&&s.start===r.start));
-      if(cancelled) return;
-      // 2. 請假找代課核准 → 原老師不計（由代課老師上）
-      const onLeave=S.requests.some(req=>
-        req.status==='approved'&&req.type==='leave'&&req.tid===r.tid&&
-        req.sessions.some(s=>s.date===ds&&s.start===r.start));
-      if(onLeave) return;
-      // 3. 假日設定 → 不計
       if(isHoliday(ds,r.tid,r.id)) return;
-      sn++;rows.push([sn,ds,tn(r.tid),r.dept+r.branch,r.grade,r.start+'–'+r.end,r.fee||0,r.ds||0,r.lec||0,'']);
+      expPush(rows,ds,r);
     });S.spots.filter(s=>tids.includes(s.tid)&&s.date===ds&&matchBranch(s.dept,s.branch)).forEach(s=>{
-      const sCancelled=S.requests.some(req=>
-        req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&
-        req.sessions.some(sess=>sess.date===ds&&sess.start===s.start));
-      if(!sCancelled){sn++;rows.push([sn,ds,tn(s.tid),s.dept+s.branch,s.grade,s.start+'–'+s.end,s.fee||0,s.ds||0,s.lec||0,'']);}
+      expPush(rows,ds,s);
     });});
   // 排序：先依日期，同一天再依開始時間
   rows.sort((a,b)=>{
@@ -3259,23 +3266,22 @@ function getMonthCourses(tid, month, fromDate, toDate){
   const rows=[];
   dates.forEach(ds=>{
     const wd=parseLocalDate(ds).getDay();
-    S.courses.filter(c=>c.tid===tid&&c.date===ds).forEach(c=>{
-      rows.push({date:ds,dept:c.dept,branch:c.branch,grade:c.grade,start:c.start,end:c.end,fee:c.fee||0,ds:c.ds||0,lec:c.lec||0,src:'admin'});
-    });
-    S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>{
-      rows.push({date:ds,dept:s.dept,branch:s.branch,grade:s.grade,start:s.start,end:s.end,fee:s.fee||0,ds:s.ds||0,lec:s.lec||0,src:'spot'});
-    });
+    const _push=(x,src)=>{
+      const st=sessStatus(tid,ds,x.start);
+      if(st==='cancel'||st==='free')return;
+      if(st==='charge'){rows.push({date:ds,dept:x.dept,branch:x.branch,grade:x.grade+'〔請假抽成〕',start:x.start,end:x.end,fee:0,ds:x.ds||0,lec:x.lec||0,src,charge:true});return;}
+      rows.push({date:ds,dept:x.dept,branch:x.branch,grade:x.grade,start:x.start,end:x.end,fee:x.fee||0,ds:x.ds||0,lec:x.lec||0,src});
+    };
+    S.courses.filter(c=>c.tid===tid&&c.date===ds).forEach(c=>_push(c,'admin'));
+    S.spots.filter(s=>s.tid===tid&&s.date===ds).forEach(s=>_push(s,'spot'));
     S.recurring.filter(r=>{
       if(r.tid!==tid||r.wd!==wd)return false;
       if(r.from&&ds<r.from)return false;if(r.to&&ds>r.to)return false;
       const freq=r.freq||'weekly';
       if(freq==='biweekly'&&r.from){const diff=Math.round((parseLocalDate(ds)-parseLocalDate(r.from))/86400000);if(Math.floor(diff/7)%2!==0)return false;}
       if(freq==='monthly'&&r.from&&parseLocalDate(r.from).getDate()!==parseLocalDate(ds).getDate())return false;
-      const cancelled=S.requests.some(req=>req.status==='approved'&&(req.type==='cancel'||req.type==='leave')&&req.tid===tid&&req.sessions.some(s=>s.date===ds&&s.start===r.start));
-      return !cancelled&&!isHoliday(ds,tid,r.id);
-    }).forEach(r=>{
-      rows.push({date:ds,dept:r.dept,branch:r.branch,grade:r.grade,start:r.start,end:r.end,fee:r.fee||0,ds:r.ds||0,lec:r.lec||0,src:'rec'});
-    });
+      return !isHoliday(ds,tid,r.id);
+    }).forEach(r=>_push(r,'rec'));
   });
   return rows;
 }
@@ -3323,7 +3329,7 @@ function renderFinance(){
   let totalSeg=0,totalFee=0,totalDs=0,totalLec=0;
   let rows=teachers.map(t=>{
     const courses=getMonthCourses(t.id, null, from, to);
-    const seg=courses.length;
+    const seg=courses.filter(x=>!x.charge).length;
     const fee=courses.reduce((a,c)=>a+c.fee,0);
     const ds=courses.reduce((a,c)=>a+c.ds,0);
     const lec=courses.reduce((a,c)=>a+c.lec,0);
@@ -4086,7 +4092,7 @@ function renderMyFinance(){
     const from = `${key}-01`;
     const to = `${key}-${String(daysInMonth).padStart(2,'0')}`;
     const courses = getMonthCourses(tid, null, from, to).filter(kwMatch);
-    const seg = courses.length;
+    const seg = courses.filter(x=>!x.charge).length;
     const fee = courses.reduce((a,c)=>a+c.fee, 0);
     const ds  = courses.reduce((a,c)=>a+c.ds, 0);
     const lec = courses.reduce((a,c)=>a+c.lec, 0);
@@ -4300,7 +4306,7 @@ function renderFinanceSingle(){
     const days = new Date(y,m,0).getDate();
     const from = `${key}-01`, to = `${key}-${String(days).padStart(2,'0')}`;
     const courses = getMonthCourses(tid, null, from, to);
-    const seg=courses.length, fee=courses.reduce((a,c)=>a+c.fee,0),
+    const seg=courses.filter(x=>!x.charge).length, fee=courses.reduce((a,c)=>a+c.fee,0),
           ds=courses.reduce((a,c)=>a+c.ds,0), lec=courses.reduce((a,c)=>a+c.lec,0);
     totalSeg+=seg; totalFee+=fee; totalDs+=ds; totalLec+=lec;
     return {label,key,seg,fee,ds,lec,courses};
@@ -4935,6 +4941,59 @@ document.addEventListener('click', function(e){
 });
 window.toggleMobSidebar=toggleMobSidebar;
 
+
+// ── 學期 & 免抽成額度 ──
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function semKey(ds){const y=+ds.slice(0,4),m=+ds.slice(5,7);return y+(m<=6?'-1':'-2');}
+function semLabel(k){const [y,h]=k.split('-');return y+(h==='1'?' 年上半（1–6月）':' 年下半（7–12月）');}
+function quotaOf(t){return (t&&t.freeQuota!=null)?t.freeQuota:3;}
+// 已用次數（以堂計）；withPending 連同待審核一起算；excludeId 排除某筆申請
+function usedFree(tid,sk,withPending,excludeId){
+  let n=0;(S.requests||[]).forEach(r=>{
+    if(r.tid!==tid||r.type!=='leave'||!r.useFree||r.id===excludeId)return;
+    if(!(r.status==='approved'||(withPending&&r.status==='pending')))return;
+    r.sessions.forEach(s=>{if(semKey(s.date)===sk)n++;});
+  });return n;
+}
+// 某堂課的狀態：cancel 停課 / free 請假免抽 / charge 請假需抽成 / null 正常
+function sessStatus(tid,ds,start){
+  for(const r of (S.requests||[])){
+    if(r.status!=='approved'||r.tid!==tid)continue;
+    if(!r.sessions.some(s=>s.date===ds&&s.start===start))continue;
+    if(r.type==='cancel')return 'cancel';
+    if(r.type==='leave')return r.useFree?'free':'charge';
+  }
+  return null;
+}
+function expPush(rows,ds,x){
+  const st=sessStatus(x.tid,ds,x.start);
+  if(st==='cancel'||st==='free')return;
+  if(st==='charge'){rows.push([0,ds,tn(x.tid),x.dept+x.branch,x.grade,x.start+'–'+x.end,0,x.ds||0,x.lec||0,'請假抽成（未上課）']);return;}
+  rows.push([0,ds,tn(x.tid),x.dept+x.branch,x.grade,x.start+'–'+x.end,x.fee||0,x.ds||0,x.lec||0,x.isSub?'代課':'']);
+}
+function freeToggleHtml(r){
+  const t=S.teachers.find(x=>x.id===r.tid);const sk=semKey(r.sessions[0]?.date||todayStr());
+  const left=quotaOf(t)-usedFree(r.tid,sk,false,r.id);
+  return `<label style="display:flex;align-items:center;gap:5px;font-size:.74rem;cursor:pointer"><input type="checkbox" id="rvfree-${r.id}" ${r.useFree?'checked':''}> 使用免抽成額度<span style="color:var(--muted)">（剩 ${Math.max(left,0)}/${quotaOf(t)}）</span></label>`;
+}
+function updateFreeHint(){
+  const row=document.getElementById('lv-free-row');if(!row)return;
+  const type=document.getElementById('lv-type')?.value;
+  row.style.display=type==='leave'?'block':'none';
+  const tid=isAdm()?(document.getElementById('lv-t')?.value||''):cur?.id;
+  const hint=document.getElementById('lv-free-hint');
+  if(!tid){if(hint)hint.textContent='請先選擇師資';return;}
+  const t=S.teachers.find(x=>x.id===tid);const sk=semKey(todayStr());
+  const used=usedFree(tid,sk,true);const q=quotaOf(t);
+  if(hint)hint.innerHTML=`${semLabel(sk)}額度 ${q} 次，已用（含審核中）${used} 次，<strong style="color:${q-used>0?'#065f46':'#b91c1c'}">還剩 ${Math.max(q-used,0)} 次</strong>。不使用則這堂的派師費、講義費仍由你負擔。`;
+}
+async function toggleReqFree(id){
+  const r=S.requests.find(x=>x.id===id);if(!r)return;
+  await fsUpdate('requests',id,{useFree:!r.useFree});
+  toast(r.useFree?'已改為需抽成':'已改為免抽成',true);
+}
+window.updateFreeHint=updateFreeHint;window.toggleReqFree=toggleReqFree;
+
 window.openOv=openOv; window.closeOv=closeOv;
 function toggleRecCheck(){const cb=document.getElementById('qa-isrec');if(!cb)return;cb.checked=!cb.checked;const fr=document.getElementById('qa-from-row');if(fr)fr.style.display=cb.checked?'grid':'none';}
 window.toggleRecCheck=toggleRecCheck;
@@ -5150,6 +5209,9 @@ function isHoliday(ds, tid){
       <div class="gr" style="margin-bottom:0">
         <div class="fg"><label>姓名</label><input type="text" id="et-name" placeholder="請輸入姓名" /></div>
         <div class="fg"><label>備注</label><input type="text" id="et-note" placeholder="選填" /></div>
+        <div class="fg"><label>個人驗證碼 <span style="font-size:.68rem;color:var(--muted)">（忘記密碼時使用，留空則不變）</span></label><input type="text" id="et-secret" autocomplete="off" placeholder="例：生日、暱稱" /></div>
+        <div class="fg"><label>每學期免抽成請假額度（次）</label><input type="number" id="et-quota" min="0" value="3" /></div>
+        <div id="et-quota-info" style="font-size:.72rem;color:var(--muted)"></div>
       </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeOv('ov-edit-teacher')">取消</button><button class="btn bn" onclick="saveEditTeacher()">儲存</button></div>
