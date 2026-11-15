@@ -364,7 +364,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     <div class="sb-ftxt"><span class="sync-dot" id="sync-dot"></span>易學國文</div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/11/15　v104</div>
+  <div style="font-size:.54rem;color:rgba(255,255,255,.15);text-align:center;padding:6px 0 10px;letter-spacing:.5px;border-top:1px solid rgba(255,255,255,.05)">最後維護：2026/11/15　v106</div>
 </nav>
 <!-- Mobile Bottom Navigation -->
 <div class="mob-nav" id="mob-nav">
@@ -631,7 +631,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:12px 0;}
     </div>
 
     <div id="pg-teachers" class="pg" style="display:none">
-      <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>師資帳號管理</div><button class="btn bs bsm" onclick="openAddTeacher()">＋ 新增師資</button></div><div class="cb" style="padding:0"><table class="tbl"><thead><tr><th>姓名</th><th>備注</th><th>行事曆權限</th><th style="width:220px"></th></tr></thead><tbody id="t-tbody"></tbody></table></div></div>
+      <div class="card"><div class="ch"><div class="ct"><div class="dot"></div>師資帳號管理</div><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="resetFreeQuota()" title="已使用次數歸零">🔄 重置免抽額度</button><button class="btn bs bsm" onclick="openAddTeacher()">＋ 新增師資</button></div></div><div class="cb" style="padding:0"><table class="tbl"><thead><tr><th>姓名</th><th>備注</th><th>行事曆權限</th><th style="width:220px"></th></tr></thead><tbody id="t-tbody"></tbody></table></div></div>
     </div>
 
     <div id="pg-leave" class="pg" style="display:none">
@@ -1241,6 +1241,14 @@ function safeDelete(col, id, confirmMsg) {
 function setupListeners() {
   unsubscribers.forEach(u=>u()); unsubscribers=[];
   // 讀管理員設定（密碼）
+onSnapshot(doc(db,'config','quota'), snap=>{
+  const sy=schoolYearOf();
+  // 沒有設定（或還是舊的年度制設定）→ 以本學年 7/1 起算，不跳提醒
+  if(snap.exists()&&snap.data().schoolYear!=null){QUOTA_CFG=snap.data();}
+  else{QUOTA_CFG={resetAt:schoolYearStart(sy),schoolYear:sy};setDoc(doc(db,'config','quota'),QUOTA_CFG).catch(()=>{});}
+  checkQuotaYear();
+  if(typeof refreshPage==='function')try{refreshPage();}catch(e){}
+});
 onSnapshot(doc(db,'config','admin'), snap=>{
   if(snap.exists()&&snap.data().pw) ADMIN_PW=snap.data().pw;
 });
@@ -1354,7 +1362,7 @@ function enterApp(){
   const histNav=document.getElementById('nav-history-t');
   if(histNav&&!isAdm()){const t=S.teachers.find(x=>x.id===cur.id);histNav.style.display=(t?.perm?.showHistory)?'flex':'none';}
   document.getElementById('lg-pw').value='';
-  fillSel(); goPage(document.querySelector('.sb-item[data-p="cal"]'));
+  fillSel(); goPage(document.querySelector('.sb-item[data-p="cal"]')); checkQuotaYear();
   // 每分鐘確認跨日
   setInterval(()=>{const t=new Date().toISOString().slice(0,10);if(calDay<t)calDay=t;},60000);
 }
@@ -1469,13 +1477,13 @@ function renderTeachers(){
   if(!S.teachers.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">👤</div>尚無師資</div></td></tr>';return;}
   tb.innerHTML=S.teachers.map(t=>{
     const p=t.perm||{type:'all'};const pt={all:'全部',select:'部分師資',self:'僅自己'}[p.type]||'全部';
-    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span> <span class="badge" style="background:var(--bg2);color:var(--navy)" title="本學期免抽成請假：已用／額度">免抽 ${usedFree(t.id,semKey(todayStr()))}/${quotaOf(t)}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>${t.secret?'<span style="font-size:.65rem;color:var(--grn);margin-left:2px">🔑</span>':'<span style="font-size:.65rem;color:#f59e0b;margin-left:2px" title="未設定驗證碼">⚠️</span>'}<button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
+    return`<tr><td style="font-weight:500">${t.name}</td><td style="color:var(--muted)">${t.note||'—'}</td><td><span class="badge bblue">${pt}</span> <span class="badge" style="background:var(--bg2);color:var(--navy)" title="本學年免抽成請假：已用／額度">免抽 ${usedFree(t.id)}/${quotaOf(t)}</span></td><td style="display:flex;gap:4px;padding:7px 10px;flex-wrap:wrap"><button class="btn bg bxs" onclick="openEditTeacher('${t.id}')">✏️ 編輯</button>${t.secret?'<span style="font-size:.65rem;color:var(--grn);margin-left:2px">🔑</span>':'<span style="font-size:.65rem;color:#f59e0b;margin-left:2px" title="未設定驗證碼">⚠️</span>'}<button class="btn bg bxs" onclick="openPerm('${t.id}')">權限</button><button class="btn bg bxs" onclick="openRp('${t.id}')">密碼</button><button class="btn bdel bxs" onclick="safeDelete('teachers','${t.id}','確定刪除師資「${t.name}」？')">刪除</button></td></tr>`;
   }).join('');
 }
 function openAddTeacher(){document.getElementById('nt-name').value='';document.getElementById('nt-note').value='';openOv('ov-teacher');}
 async function doAddTeacher(){const name=document.getElementById('nt-name').value.trim();if(!name){toast('請填寫姓名');return;}await fsAdd('teachers',{name,pw:'',note:document.getElementById('nt-note').value.trim(),perm:{type:'all',ids:[],showHistory:false}});closeOv('ov-teacher');toast('師資已新增',true);}
 let editTeacherId=null;
-function openEditTeacher(id){editTeacherId=id;const t=S.teachers.find(x=>x.id===id);if(!t)return;document.getElementById('et-name').value=t.name||'';document.getElementById('et-note').value=t.note||'';const _sec=document.getElementById('et-secret');if(_sec)_sec.value='';const _q=document.getElementById('et-quota');if(_q)_q.value=quotaOf(t);const _qi=document.getElementById('et-quota-info');if(_qi){const sk=semKey(todayStr());_qi.textContent=semLabel(sk)+'已使用 '+usedFree(t.id,sk)+' 次';}openOv('ov-edit-teacher');}
+function openEditTeacher(id){editTeacherId=id;const t=S.teachers.find(x=>x.id===id);if(!t)return;document.getElementById('et-name').value=t.name||'';document.getElementById('et-note').value=t.note||'';const _sec=document.getElementById('et-secret');if(_sec)_sec.value='';const _q=document.getElementById('et-quota');if(_q)_q.value=quotaOf(t);const _qi=document.getElementById('et-quota-info');if(_qi){_qi.textContent=quotaLabel()+'已使用 '+usedFree(t.id)+' 次';}openOv('ov-edit-teacher');}
 async function saveEditTeacher(){if(!editTeacherId)return;const name=document.getElementById('et-name').value.trim();const note=document.getElementById('et-note').value.trim();if(!name){toast('請填寫姓名');return;}const secretVal=document.getElementById('et-secret')?.value.trim();
   const updateData={name,note};
   const _qv=parseInt(document.getElementById('et-quota')?.value);if(!isNaN(_qv)&&_qv>=0)updateData.freeQuota=_qv;
@@ -1908,10 +1916,8 @@ async function submitLeave(){
   const _type=document.getElementById('lv-type').value;
   const useFree=_type==='leave'&&!!document.getElementById('lv-free')?.checked;
   if(useFree){
-    const bySem={};sessions.forEach(s=>{const k=semKey(s.date);bySem[k]=(bySem[k]||0)+1;});
-    const t=S.teachers.find(x=>x.id===tid);
-    for(const k in bySem){const left=quotaOf(t)-usedFree(tid,k,true);
-      if(bySem[k]>left){toast(semLabel(k)+'免抽成額度只剩 '+Math.max(left,0)+' 次，這次要用 '+bySem[k]+' 次');return;}}
+    const t=S.teachers.find(x=>x.id===tid);const left=quotaOf(t)-usedFree(tid,true);
+    if(sessions.length>left){toast('免抽成額度只剩 '+Math.max(left,0)+' 次，這次要用 '+sessions.length+' 次');return;}
   }
   await fsAdd('requests',{tid,type:_type,useFree,note:document.getElementById('lv-note').value.trim(),sessions,status:'pending',takers:{},at:new Date().toISOString()});
   toast('✅ 申請已送出',true);clearLeave();
@@ -2017,10 +2023,8 @@ async function approve(id){
     const cb=document.getElementById('rvfree-'+id);
     const useFree=cb?cb.checked:!!req.useFree;
     if(useFree){
-      const t=S.teachers.find(x=>x.id===req.tid);const bySem={};
-      req.sessions.forEach(s=>{const k=semKey(s.date);bySem[k]=(bySem[k]||0)+1;});
-      for(const k in bySem){const left=quotaOf(t)-usedFree(req.tid,k,false,id);
-        if(bySem[k]>left&&!confirm(tn(req.tid)+' '+semLabel(k)+'免抽成額度只剩 '+Math.max(left,0)+' 次，仍要使用嗎？'))return;}
+      const t=S.teachers.find(x=>x.id===req.tid);const left=quotaOf(t)-usedFree(req.tid,false,id);
+      if(req.sessions.length>left&&!confirm(tn(req.tid)+' 免抽成額度只剩 '+Math.max(left,0)+' 次，仍要使用嗎？'))return;
     }
     await fsUpdate('requests',id,{status:'approved',useFree});
   } else
@@ -4942,20 +4946,43 @@ document.addEventListener('click', function(e){
 window.toggleMobSidebar=toggleMobSidebar;
 
 
-// ── 學期 & 免抽成額度 ──
+// ── 免抽成額度（年度制，管理員確認後才重置）──
+let QUOTA_CFG=null; // {resetAt:'YYYY-MM-DD', schoolYear:YYYY}
+// 學年：7月1日起算，到隔年6月底
+function schoolYearOf(d){d=d||new Date();return d.getMonth()>=6?d.getFullYear():d.getFullYear()-1;}
+function schoolYearStart(sy){return sy+'-07-01';}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function semKey(ds){const y=+ds.slice(0,4),m=+ds.slice(5,7);return y+(m<=6?'-1':'-2');}
-function semLabel(k){const [y,h]=k.split('-');return y+(h==='1'?' 年上半（1–6月）':' 年下半（7–12月）');}
+function quotaSince(){return QUOTA_CFG?.resetAt||schoolYearStart(schoolYearOf());}
+function quotaLabel(){return '自 '+quotaSince()+' 起';}
 function quotaOf(t){return (t&&t.freeQuota!=null)?t.freeQuota:3;}
-// 已用次數（以堂計）；withPending 連同待審核一起算；excludeId 排除某筆申請
-function usedFree(tid,sk,withPending,excludeId){
-  let n=0;(S.requests||[]).forEach(r=>{
-    if(r.tid!==tid||r.type!=='leave'||!r.useFree||r.id===excludeId)return;
+// 已用次數（以堂計，從上次重置日起算）；withPending 連同待審核；excludeId 排除某筆申請
+function usedFree(tid,withPending,excludeId){
+  const since=quotaSince();let n=0;
+  (S.requests||[]).forEach(r=>{
+    if(r.tid!==tid||r.type!=='leave'||!r.useFree||(excludeId&&r.id===excludeId))return;
     if(!(r.status==='approved'||(withPending&&r.status==='pending')))return;
-    r.sessions.forEach(s=>{if(semKey(s.date)===sk)n++;});
+    r.sessions.forEach(s=>{if((s.date||'')>=since)n++;});
   });return n;
 }
-// 某堂課的狀態：cancel 停課 / free 請假免抽 / charge 請假需抽成 / null 正常
+async function resetFreeQuota(){
+  if(!isAdm())return;
+  const sy=schoolYearOf();
+  if(!confirm('確定要重置所有老師的免抽成額度嗎？\n重置後已使用次數歸零，從今天（'+todayStr()+'）重新計算。'))return;
+  await setDoc(doc(db,'config','quota'),{resetAt:todayStr(),schoolYear:sy});
+  toast('✅ 免抽成額度已重置',true);
+}
+function checkQuotaYear(){
+  if(!cur||!isAdm()||!QUOTA_CFG||window._quotaAsked)return;
+  const sy=schoolYearOf();
+  if(sy<=(QUOTA_CFG.schoolYear||0))return;
+  window._quotaAsked=true;
+  setTimeout(()=>{
+    if(confirm('新學年（'+sy+'/7 – '+(sy+1)+'/6）開始了。\n要重置所有老師的免抽成請假額度嗎？\n\n按「取消」則維持目前已使用次數，下次登入會再詢問。')){
+      setDoc(doc(db,'config','quota'),{resetAt:todayStr(),schoolYear:sy}).then(()=>toast('✅ 免抽成額度已重置',true));
+    }
+  },800);
+}
+window.resetFreeQuota=resetFreeQuota;
 function sessStatus(tid,ds,start){
   for(const r of (S.requests||[])){
     if(r.status!=='approved'||r.tid!==tid)continue;
@@ -4972,8 +4999,8 @@ function expPush(rows,ds,x){
   rows.push([0,ds,tn(x.tid),x.dept+x.branch,x.grade,x.start+'–'+x.end,x.fee||0,x.ds||0,x.lec||0,x.isSub?'代課':'']);
 }
 function freeToggleHtml(r){
-  const t=S.teachers.find(x=>x.id===r.tid);const sk=semKey(r.sessions[0]?.date||todayStr());
-  const left=quotaOf(t)-usedFree(r.tid,sk,false,r.id);
+  const t=S.teachers.find(x=>x.id===r.tid);
+  const left=quotaOf(t)-usedFree(r.tid,false,r.id);
   return `<label style="display:flex;align-items:center;gap:5px;font-size:.74rem;cursor:pointer"><input type="checkbox" id="rvfree-${r.id}" ${r.useFree?'checked':''}> 使用免抽成額度<span style="color:var(--muted)">（剩 ${Math.max(left,0)}/${quotaOf(t)}）</span></label>`;
 }
 function updateFreeHint(){
@@ -4983,9 +5010,9 @@ function updateFreeHint(){
   const tid=isAdm()?(document.getElementById('lv-t')?.value||''):cur?.id;
   const hint=document.getElementById('lv-free-hint');
   if(!tid){if(hint)hint.textContent='請先選擇師資';return;}
-  const t=S.teachers.find(x=>x.id===tid);const sk=semKey(todayStr());
-  const used=usedFree(tid,sk,true);const q=quotaOf(t);
-  if(hint)hint.innerHTML=`${semLabel(sk)}額度 ${q} 次，已用（含審核中）${used} 次，<strong style="color:${q-used>0?'#065f46':'#b91c1c'}">還剩 ${Math.max(q-used,0)} 次</strong>。不使用則這堂的派師費、講義費仍由你負擔。`;
+  const t=S.teachers.find(x=>x.id===tid);
+  const used=usedFree(tid,true);const q=quotaOf(t);
+  if(hint)hint.innerHTML=`本學年額度 ${q} 次，已用（含審核中）${used} 次，<strong style="color:${q-used>0?'#065f46':'#b91c1c'}">還剩 ${Math.max(q-used,0)} 次</strong>。不使用則這堂的派師費、講義費仍由你負擔。`;
 }
 async function toggleReqFree(id){
   const r=S.requests.find(x=>x.id===id);if(!r)return;
@@ -5210,7 +5237,7 @@ function isHoliday(ds, tid){
         <div class="fg"><label>姓名</label><input type="text" id="et-name" placeholder="請輸入姓名" /></div>
         <div class="fg"><label>備注</label><input type="text" id="et-note" placeholder="選填" /></div>
         <div class="fg"><label>個人驗證碼 <span style="font-size:.68rem;color:var(--muted)">（忘記密碼時使用，留空則不變）</span></label><input type="text" id="et-secret" autocomplete="off" placeholder="例：生日、暱稱" /></div>
-        <div class="fg"><label>每學期免抽成請假額度（次）</label><input type="number" id="et-quota" min="0" value="3" /></div>
+        <div class="fg"><label>每學年免抽成請假額度（次，7月起算）</label><input type="number" id="et-quota" min="0" value="3" /></div>
         <div id="et-quota-info" style="font-size:.72rem;color:var(--muted)"></div>
       </div>
     </div>
